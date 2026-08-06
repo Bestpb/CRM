@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="cs" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity CRM - Systém pro správu klientů a událostí</title>
+    <!-- Google Fonts - Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet.js CSS for Map (Loaded Locally) -->
+    <link rel="stylesheet" href="leaflet.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- App Container -->
+    <div class="app-layout">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="32" height="32" rx="8" fill="url(#logo-grad)"/>
+                        <path d="M16 8L23 20H9L16 8Z" fill="white"/>
+                        <circle cx="16" cy="22" r="2" fill="white"/>
+                        <defs>
+                            <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#4F46E5"/>
+                                <stop offset="1" stop-color="#7C3AED"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <span>Antigravity<strong>CRM</strong></span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-tab="dashboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.505-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                    <span>Nástěnka</span>
+                </a>
+                <a href="#uzivatele" class="nav-item" data-tab="uzivatele" id="nav-uzivatele">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0110.089 18H8.25c-.621 0-1.125-.504-1.125-1.125V18M14 9a4 4 0 11-8 0 4 4 0 018 0zM3.751 20.105a8.25 8.25 0 0116.498 0M9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75z" /></svg>
+                    <span>Uživatelé</span>
+                </a>
+                <a href="#klienti" class="nav-item" data-tab="klienti" id="nav-klienti">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h18v3H3V3z" /></svg>
+                    <span>Klienti</span>
+                </a>
+                <a href="#pracovnici" class="nav-item" data-tab="pracovnici" id="nav-pracovnici">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.97 5.97 0 00-.75-2.98m-.94-3.197a5.12 5.12 0 00-.478-.362m-9.088.362A5.12 5.12 0 005.25 12m13.5 0a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zm-9 0a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+                    <span>Pracovníci</span>
+                </a>
+                <a href="#kalendar" class="nav-item" data-tab="kalendar" id="nav-kalendar">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" /></svg>
+                    <span>Kalendář / Události</span>
+                </a>
+                <a href="#opravneni" class="nav-item" data-tab="opravneni" id="nav-opravneni">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                    <span>Přístupová Práva</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button id="theme-toggle" class="btn-theme">
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m0 13.5V21M5.22 5.22l1.582 1.582m10.4 10.4l1.582 1.582M3 12h2.25m13.5 0H21M5.22 18.78l1.582-1.582m10.4-10.4l1.582-1.582M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" /></svg>
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+                    <span>Tmavý režim</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <h1 id="current-section-title">Nástěnka</h1>
+                </div>
+                <div class="top-bar-right">
+                    <!-- Simulation User Selector -->
+                    <div class="user-simulator">
+                        <label for="simulation-user">Simulovaný uživatel (Role):</label>
+                        <select id="simulation-user" class="form-select">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="active-user-badge">
+                        <span id="active-user-initials">--</span>
+                        <div class="active-user-info">
+                            <span id="active-user-name">Načítání...</span>
+                            <span id="active-user-role" class="badge-role">Načítání...</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Views -->
+            <div class="content-body">
+                <!-- ACCESS DENIED VIEW -->
+                <div id="access-denied-view" class="view hidden">
+                    <div class="error-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="error-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                        <h2>Přístup odepřen</h2>
+                        <p>Váš aktuální uživatelský přístupový kód (<strong><span id="denied-code">N/A</span></strong>) nemá oprávnění k prohlížení této sekce.</p>
+                        <p class="subtext">Chcete-li zobrazit tuto tabulku, přepněte uživatele v horním menu na někoho s plným přístupem (např. administrátor DHA), nebo upravte oprávnění v sekci "Přístupová Práva".</p>
+                    </div>
+                </div>
+
+                <!-- 1. DASHBOARD VIEW -->
+                <div id="dashboard-view" class="view">
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon clients">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Klienti</span>
+                                <span class="stat-value" id="stat-clients">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon workers">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Pracovníci</span>
+                                <span class="stat-value" id="stat-workers">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon events">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Aktivní události</span>
+                                <span class="stat-value" id="stat-events">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon users">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Uživatelé</span>
+                                <span class="stat-value" id="stat-users">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Upcoming Events list -->
+                        <div class="card col-1">
+                            <div class="card-header">
+                                <h2>Nadcházející události dneška a zítřka</h2>
+                                <button class="btn btn-primary btn-sm open-add-event-modal">+ Nová událost</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="events-list" id="dashboard-events">
+                                    <!-- Populated by JS -->
+                                    <div class="empty-state">Žádné události v nejbližší době.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Map -->
+                        <div class="card col-2">
+                            <div class="card-header">
+                                <h2>Mapa Klientů</h2>
+                                <span class="card-subtitle">Kliknutím na značku zobrazíte detail klienta a jeho kontaktní osoby</span>
+                            </div>
+                            <div class="card-body no-padding">
+                                <div id="map" style="height: 380px; width: 100%; border-radius: 0 0 12px 12px; z-index: 1;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. UŽIVATELÉ VIEW -->
+                <div id="uzivatele-view" class="view hidden">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" id="search-users" placeholder="Hledat uživatele podle jména nebo zkratky..." class="form-control">
+                        </div>
+                        <button class="btn btn-primary" id="btn-add-user">+ Nový Uživatel</button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="table-users">
+                                <thead>
+                                    <tr>
+                                        <th>Poř. číslo</th>
+                                        <th>Jméno a Příjmení</th>
+                                        <th>Zkratka</th>
+                                        <th>Nastoupil/a</th>
+                                        <th>Ukončil/a</th>
+                                        <th>Datum naroz.</th>
+                                        <th>Kód přístupu</th>
+                                        <th>Heslo</th>
+                                        <th>Dovolená (dny)</th>
+                                        <th>Náhradní volno (hod)</th>
+                                        <th class="text-right">Akce</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. KLIENTI VIEW -->
+                <div id="klienti-view" class="view hidden">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" id="search-clients" placeholder="Hledat klienta, město, stát, výrobu..." class="form-control">
+                        </div>
+                        <button class="btn btn-primary" id="btn-add-client">+ Nový Klient</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="table-clients">
+                                <thead>
+                                    <tr>
+                                        <th>Název firmy</th>
+                                        <th>Adresa</th>
+                                        <th>Okres / Stát</th>
+                                        <th>Velikost</th>
+                                        <th>Typ výroby</th>
+                                        <th>Souřadnice (Lat, Lng)</th>
+                                        <th class="text-center">SPV 1</th>
+                                        <th class="text-center">SPV 2</th>
+                                        <th class="text-center">SPV 3</th>
+                                        <th class="text-right">Akce</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. PRACOVNÍCI VIEW -->
+                <div id="pracovnici-view" class="view hidden">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" id="search-workers" placeholder="Hledat pracovníka, firmu, funkci..." class="form-control">
+                        </div>
+                        <button class="btn btn-primary" id="btn-add-worker">+ Nový Pracovník</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="table-workers">
+                                <thead>
+                                    <tr>
+                                        <th>Jméno a Příjmení</th>
+                                        <th>Klient (Firma)</th>
+                                        <th>Funkce</th>
+                                        <th>Mobil</th>
+                                        <th>Email</th>
+                                        <th class="text-center">Enews (Newsletter)</th>
+                                        <th class="text-right">Akce</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. KALENDÁŘ VIEW -->
+                <div id="kalendar-view" class="view hidden">
+                    <div class="calendar-layout">
+                        <!-- Left sidebar for Event filters & details -->
+                        <div class="calendar-sidebar">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Filtrovat kalendář</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label for="filter-event-type">Typ události</label>
+                                        <select id="filter-event-type" class="form-select">
+                                            <option value="all">Všechny typy</option>
+                                            <option value="schůzka">Schůzka</option>
+                                            <option value="úkol">Úkol</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="filter-event-user">Podle Uživatele</label>
+                                        <select id="filter-event-user" class="form-select">
+                                            <option value="all">Všichni uživatelé</option>
+                                            <!-- Populated dynamically -->
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-primary btn-block open-add-event-modal" style="margin-top: 15px;">+ Přidat událost</button>
+                                </div>
+                            </div>
+
+                            <div class="card" style="margin-top: 20px;">
+                                <div class="card-header">
+                                    <h3>Trasování & Původ událostí</h3>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted" style="font-size: 0.85rem; line-height: 1.4;">
+                                        Zde můžete vidět, z jakého kontextu událost pochází (zda byla vytvořena u klienta, nebo pracovníka). V kalendáři jsou propojené položky barevně označeny.
+                                    </p>
+                                    <div class="origin-legend" style="margin-top: 10px;">
+                                        <div class="legend-item"><span class="color-badge client-origin"></span> Propojeno s klientem</div>
+                                        <div class="legend-item"><span class="color-badge worker-origin"></span> Propojeno s pracovníkem</div>
+                                        <div class="legend-item"><span class="color-badge direct-origin"></span> Obecná událost (přímá)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Calendar -->
+                        <div class="calendar-main-container card">
+                            <div class="calendar-header">
+                                <div class="calendar-nav-buttons">
+                                    <button id="btn-prev-month" class="btn btn-secondary btn-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                    </button>
+                                    <h2 id="calendar-month-year">Srpen 2026</h2>
+                                    <button id="btn-next-month" class="btn btn-secondary btn-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                </div>
+                                <div class="calendar-today-btn">
+                                    <button id="btn-calendar-today" class="btn btn-secondary">Dnes</button>
+                                </div>
+                            </div>
+
+                            <div class="calendar-grid-header">
+                                <div>Po</div>
+                                <div>Út</div>
+                                <div>St</div>
+                                <div>Čt</div>
+                                <div>Pá</div>
+                                <div>So</div>
+                                <div>Ne</div>
+                            </div>
+                            <div class="calendar-grid-cells" id="calendar-cells">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. PŘÍSTUPOVÁ PRÁVA VIEW -->
+                <div id="opravneni-view" class="view hidden">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Nastavení přístupových kódů</h2>
+                            <p class="card-subtitle">Každý uživatel má přiřazen přístupový kód (KÓD-PŘÍSTUP). Zde určujete, k jakým modulům mají tyto kódy přístup.</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="table-permissions">
+                                    <thead>
+                                        <tr>
+                                            <th>Přístupový kód</th>
+                                            <th>Popis role</th>
+                                            <th class="text-center">Nástěnka</th>
+                                            <th class="text-center">Uživatelé</th>
+                                            <th class="text-center">Klienti</th>
+                                            <th class="text-center">Pracovníci</th>
+                                            <th class="text-center">Kalendář</th>
+                                            <th class="text-center">Práva</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated dynamically by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="info-alert" style="margin-top: 20px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24" style="color: #4F46E5;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <div>
+                                    <strong>Jak to funguje?</strong>
+                                    <p>Změňte přihlášeného uživatele v pravém horním rohu aplikace. Pokud zvolíte uživatele s kódem, který nemá povolenou např. sekci "Uživatelé", tato sekce v postranním panelu zmizí nebo se zobrazí chybová hláška o odepření přístupu.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ==============================================
+         MODALS (FORMULÁŘE PRO PŘIDÁVÁNÍ / EDITACI)
+         ============================================== -->
+
+    <!-- Backdrop -->
+    <div class="modal-backdrop hidden" id="modal-backdrop"></div>
+
+    <!-- 1. USER MODAL -->
+    <div class="modal hidden" id="modal-user">
+        <div class="modal-header">
+            <h3 id="modal-user-title">Nový Uživatel</h3>
+            <button class="btn-close-modal">&times;</button>
+        </div>
+        <form id="form-user">
+            <input type="hidden" id="user-id">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group col-full">
+                        <label for="user-jmeno" class="required">Jméno a Příjmení</label>
+                        <input type="text" id="user-jmeno" class="form-control" required placeholder="např. Jan Novák">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-zkratka" class="required">Zkratka</label>
+                        <input type="text" id="user-zkratka" class="form-control" required maxlength="5" placeholder="např. NOV">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-kod-pristup" class="required">Kód přístupu</label>
+                        <select id="user-kod-pristup" class="form-select" required>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-nastup-datum" class="required">Datum nástupu</label>
+                        <input type="date" id="user-nastup-datum" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-vystup-datum">Datum ukončení</label>
+                        <input type="date" id="user-vystup-datum" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-datum-nar">Datum narození</label>
+                        <input type="date" id="user-datum-nar" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-heslo" class="required">Heslo</label>
+                        <input type="password" id="user-heslo" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-dovolenana" class="required">Dny dovolené</label>
+                        <input type="number" id="user-dovolenana" class="form-control" required min="0" value="25">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-hod-nv" class="required">Hodin náhradního volna</label>
+                        <input type="number" id="user-hod-nv" class="form-control" required min="0" value="0">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
+                <button type="submit" class="btn btn-primary">Uložit</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 2. CLIENT MODAL -->
+    <div class="modal hidden" id="modal-client">
+        <div class="modal-header">
+            <h3 id="modal-client-title">Nový Klient</h3>
+            <button class="btn-close-modal">&times;</button>
+        </div>
+        <form id="form-client">
+            <input type="hidden" id="client-id">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group col-full">
+                        <label for="client-nazev" class="required">Název firmy</label>
+                        <input type="text" id="client-nazev" class="form-control" required placeholder="např. Kovovýroba s.r.o.">
+                    </div>
+                    <div class="form-group col-full">
+                        <label for="client-ulice" class="required">Ulice a č.p.</label>
+                        <input type="text" id="client-ulice" class="form-control" required placeholder="Průmyslová 120">
+                    </div>
+                    <div class="form-group">
+                        <label for="client-psc" class="required">PSČ</label>
+                        <input type="text" id="client-psc" class="form-control" required placeholder="123 45">
+                    </div>
+                    <div class="form-group">
+                        <label for="client-mesto" class="required">Město</label>
+                        <input type="text" id="client-mesto" class="form-control" required placeholder="Plzeň">
+                    </div>
+                    <div class="form-group">
+                        <label for="client-okres" class="required">Okres</label>
+                        <input type="text" id="client-okres" class="form-control" required placeholder="Plzeň-město">
+                    </div>
+                    <div class="form-group">
+                        <label for="client-stat" class="required">Stát</label>
+                        <input type="text" id="client-stat" class="form-control" required value="Česká republika">
+                    </div>
+                    <div class="form-group">
+                        <label for="client-velikost" class="required">Velikost firmy</label>
+                        <select id="client-velikost" class="form-select" required>
+                            <option value="Malá (1-9 zaměstnanců)">Malá (1-9)</option>
+                            <option value="Střední (10-49 zaměstnanců)" selected>Střední (10-49)</option>
+                            <option value="Velká (50+ zaměstnanců)">Velká (50+)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="client-typ-vyroby" class="required">Typ výroby</label>
+                        <input type="text" id="client-typ-vyroby" class="form-control" required placeholder="např. Strojírenství">
+                    </div>
+                    <div class="form-group col-full">
+                        <label for="client-souradnice" class="required">Souřadnice (Zeměpisná šířka, délka)</label>
+                        <div class="input-help-row">
+                            <input type="text" id="client-souradnice" class="form-control" required placeholder="např. 49.7384, 13.3736">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-geocode">Vyhledat GPS podle adresy</button>
+                        </div>
+                    </div>
+                    <div class="form-group col-full checks-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="client-spv1">
+                            <span>Speciální výběr 1 (SPV1)</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="client-spv2">
+                            <span>Speciální výběr 2 (SPV2)</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="client-spv3">
+                            <span>Speciální výběr 3 (SPV3)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="footer-left" style="display: flex; align-items: center;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-event-from-client">+ Zadat událost klientovi</button>
+                    <span class="text-muted" id="client-linked-events-info" style="font-size: 0.85rem; margin-left: 12px;"></span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
+                <button type="submit" class="btn btn-primary">Uložit</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 3. WORKER MODAL -->
+    <div class="modal hidden" id="modal-worker">
+        <div class="modal-header">
+            <h3 id="modal-worker-title">Nový Pracovník</h3>
+            <button class="btn-close-modal">&times;</button>
+        </div>
+        <form id="form-worker">
+            <input type="hidden" id="worker-id">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group col-full">
+                        <label for="worker-jmeno" class="required">Jméno a Příjmení</label>
+                        <input type="text" id="worker-jmeno" class="form-control" required placeholder="např. Petr Svoboda">
+                    </div>
+                    <div class="form-group col-full">
+                        <label for="worker-klient-id" class="required">Přiřadit ke klientovi (Firma)</label>
+                        <select id="worker-klient-id" class="form-select" required>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="worker-funkce" class="required">Funkce / Role</label>
+                        <input type="text" id="worker-funkce" class="form-control" required placeholder="např. Vedoucí nákupu">
+                    </div>
+                    <div class="form-group">
+                        <label for="worker-mobil" class="required">Mobil</label>
+                        <input type="tel" id="worker-mobil" class="form-control" required placeholder="+420 777 123 456">
+                    </div>
+                    <div class="form-group col-full">
+                        <label for="worker-email" class="required">E-mail</label>
+                        <input type="email" id="worker-email" class="form-control" required placeholder="svoboda@firma.cz">
+                    </div>
+                    <div class="form-group col-full">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="worker-enews">
+                            <span>Odebírat zpravodaj (ENEWS)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="footer-left" style="display: flex; align-items: center;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-event-from-worker">+ Zadat událost pracovníkovi</button>
+                    <span class="text-muted" id="worker-linked-events-info" style="font-size: 0.85rem; margin-left: 12px;"></span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
+                <button type="submit" class="btn btn-primary">Uložit</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 4. EVENT MODAL -->
+    <div class="modal hidden" id="modal-event">
+        <div class="modal-header">
+            <h3 id="modal-event-title">Nová Událost</h3>
+            <button class="btn-close-modal">&times;</button>
+        </div>
+        <form id="form-event">
+            <input type="hidden" id="event-id">
+            
+            <!-- Context origin warning/info -->
+            <div class="origin-banner hidden" id="event-origin-banner">
+                <!-- Populated dynamically (e.g. "Zadáno z detailu klienta: Kovovýroba s.r.o.") -->
+            </div>
+
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group col-full">
+                        <label for="event-nazev" class="required">Název události / Předmět</label>
+                        <input type="text" id="event-nazev" class="form-control" required placeholder="např. Úvodní schůzka o spolupráci">
+                    </div>
+                    <div class="form-group">
+                        <label for="event-typ" class="required">Typ události</label>
+                        <select id="event-typ" class="form-select" required>
+                            <option value="schůzka" selected>Schůzka</option>
+                            <option value="úkol">Úkol</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-uzivatel-id" class="required">Uživatel (Zodpovědná osoba)</label>
+                        <select id="event-uzivatel-id" class="form-select" required>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-datum-plan" class="required">Datum zahájení / plánování</label>
+                        <input type="datetime-local" id="event-datum-plan" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-datum-kon" class="required">Datum konce / splnění</label>
+                        <input type="datetime-local" id="event-datum-kon" class="form-control" required>
+                    </div>
+
+                    <!-- Entity Linking Fields -->
+                    <div class="form-group col-full border-top pt-10">
+                        <label style="font-weight: 600;">Propojení & Trasování Původu</label>
+                        <p class="form-help">Můžete událost propojit s konkrétním klientem nebo pracovníkem pro zpětnou dohledatelnost.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-link-client">Propojit s Klientem</label>
+                        <select id="event-link-client" class="form-select">
+                            <option value="">-- Nepropojeno s klientem --</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-link-worker">Propojit s Pracovníkem</label>
+                        <select id="event-link-worker" class="form-select">
+                            <option value="">-- Nepropojeno s pracovníkem --</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="form-group col-full">
+                        <label for="event-poznamka">Poznámka / Popis</label>
+                        <textarea id="event-poznamka" class="form-control" rows="3" placeholder="Zde zapište podrobnosti o schůzce nebo úkolu..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="footer-left">
+                    <button type="button" class="btn btn-danger hidden" id="btn-delete-event">Smazat událost</button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
+                <button type="submit" class="btn btn-primary">Uložit</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Leaflet.js JavaScript for Map (Loaded Locally) -->
+    <script src="leaflet.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
