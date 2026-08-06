@@ -966,39 +966,69 @@ function deleteClient(clientId) {
     }
 }
 
-// Simple Geocoding mockup for demonstration
-document.getElementById('btn-geocode').addEventListener('click', () => {
-    const ulice = document.getElementById('client-ulice').value;
-    const mesto = document.getElementById('client-mesto').value;
+// Real Geocoding via OpenStreetMap Nominatim API
+document.getElementById('btn-geocode').addEventListener('click', async () => {
+    const ulice = document.getElementById('client-ulice').value.trim();
+    const mesto = document.getElementById('client-mesto').value.trim();
+    const psc = document.getElementById('client-psc').value.trim();
+    const stat = document.getElementById('client-stat').value.trim();
     
     if (!ulice || !mesto) {
-        alert("Prosím vyplňte ulici a město.");
+        alert("Prosím vyplňte ulici a město před vyhledáním souřadnic.");
         return;
     }
 
-    // Mock coordinates generation centered around Czech cities so it falls onto the map nicely
-    const citiesGps = {
-        'praha': [50.0833, 14.4253],
-        'brno': [49.1915, 16.6212],
-        'plzeň': [49.7384, 13.3736],
-        'liberec': [50.7512, 15.0298],
-        'ostrava': [49.8209, 18.2625],
-        'olomouc': [49.5937, 17.2508],
-        'české budějovice': [48.9744, 14.4743]
-    };
+    const btn = document.getElementById('btn-geocode');
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Hledám...';
+    btn.disabled = true;
 
-    const searchKey = mesto.trim().toLowerCase();
-    let coords = citiesGps[searchKey];
-    
-    if (!coords) {
-        // Random slight deviation from Prague center to simulate lookup success
-        const randomLat = 49.8 + (Math.random() - 0.5) * 1.5;
-        const randomLng = 14.5 + (Math.random() - 0.5) * 2.5;
-        coords = [randomLat.toFixed(4), randomLng.toFixed(4)];
+    try {
+        // Build a precise query string from address components
+        const query = [ulice, psc, mesto, stat || 'Česká republika'].filter(Boolean).join(', ');
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`;
+        
+        console.log('[GEOCODE] Querying:', url);
+        const response = await fetch(url, {
+            headers: { 'Accept-Language': 'cs,en;q=0.9' }
+        });
+
+        if (!response.ok) throw new Error(`HTTP chyba: ${response.status}`);
+
+        const results = await response.json();
+        console.log('[GEOCODE] Results:', results);
+
+        if (results.length > 0) {
+            const lat = parseFloat(results[0].lat).toFixed(4);
+            const lng = parseFloat(results[0].lon).toFixed(4);
+            document.getElementById('client-souradnice').value = `${lat}, ${lng}`;
+            const displayName = results[0].display_name;
+            alert(`✅ Souřadnice nalezeny:\nLat: ${lat}, Lng: ${lng}\n\nAdresa dle mapy:\n${displayName}`);
+        } else {
+            // Fallback: search by city only
+            const fallbackQuery = [mesto, stat || 'Česká republika'].join(', ');
+            const fallbackUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fallbackQuery)}&format=json&limit=1`;
+            console.log('[GEOCODE] Fallback query:', fallbackUrl);
+            const fallbackResp = await fetch(fallbackUrl, {
+                headers: { 'Accept-Language': 'cs,en;q=0.9' }
+            });
+            const fallbackResults = await fallbackResp.json();
+            if (fallbackResults.length > 0) {
+                const lat = parseFloat(fallbackResults[0].lat).toFixed(4);
+                const lng = parseFloat(fallbackResults[0].lon).toFixed(4);
+                document.getElementById('client-souradnice').value = `${lat}, ${lng}`;
+                alert(`✅ Souřadnice nalezeny (přibližně dle města):\nLat: ${lat}, Lng: ${lng}\n\n⚠️ Přesná ulice nebyla rozpoznána, souřadnice jsou středem města.`);
+            } else {
+                alert("❌ Adresa nebyla nalezena. Zkontrolujte ulici a město, nebo zadejte souřadnice ručně.");
+            }
+        }
+    } catch (err) {
+        console.error('[GEOCODE] Error:', err);
+        alert("❌ Chyba při vyhledávání souřadnic:\n" + err.message + "\n\nZkontrolujte připojení k internetu nebo zadejte souřadnice ručně.");
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
     }
-
-    document.getElementById('client-souradnice').value = `${coords[0]}, ${coords[1]}`;
-    alert(`GPS Souřadnice nalezeny: ${coords[0]}, ${coords[1]}`);
 });
 
 
