@@ -1863,10 +1863,16 @@ function openEventModal(eventId = null, options = {}) {
         // Save origin context on form dataset
         form.dataset.origin = origin;
 
-        // Ensure inputs are enabled for new creation
+        // Ensure inputs are enabled for new creation (except responsible person dropdown for non-admins)
         const formInputs = form.querySelectorAll('input, select, textarea');
+        const activeUserRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+        const isAdmin = (activeUserRole === 'ADMIN');
         formInputs.forEach(input => {
-            input.disabled = false;
+            if (input.id === 'event-uzivatel-id' && !isAdmin) {
+                input.disabled = true;
+            } else {
+                input.disabled = false;
+            }
         });
         const saveBtn = form.querySelector('button[type="submit"]');
         if (saveBtn) saveBtn.style.display = 'inline-block';
