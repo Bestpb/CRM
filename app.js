@@ -1620,14 +1620,9 @@ function openEventModal(eventId = null, options = {}) {
 
         document.getElementById('event-datum-plan').value = formatDateToISO(defaultStart);
         
-        // For new events: default end date only if it is "schůzka" (type select defaults to schůzka). 
-        // Tasks start with blank completion date.
-        const eventType = document.getElementById('event-typ').value;
-        if (eventType === 'schůzka') {
-            document.getElementById('event-datum-kon').value = formatDateToISO(defaultEnd);
-        } else {
-            document.getElementById('event-datum-kon').value = '';
-        }
+        // For new events: completion date is ALWAYS empty by default,
+        // so that they start as uncompleted (tasks and meetings)
+        document.getElementById('event-datum-kon').value = '';
         
         // Save origin context on form dataset
         form.dataset.origin = origin;
