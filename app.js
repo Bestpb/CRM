@@ -530,7 +530,7 @@ function initLeafletMap() {
             return;
         }
 
-        state.map = L.map('map').setView([49.8153, 15.4730], 7);
+        state.map = L.map('map').setView([49.2, 17.5], 6);
         
         // OpenStreetMap Tile Layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -629,6 +629,9 @@ function renderMapMarkers() {
         
         state.mapMarkers.push(marker);
     });
+
+    // Fixed view covering Czech Republic + Slovakia
+    state.map.setView([49.2, 17.5], 6);
 }
 
 // Global functions exposed to window so that Leaflet popup buttons can execute them
