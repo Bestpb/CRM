@@ -151,6 +151,7 @@ function initData() {
         localStorage.setItem('crm_events', JSON.stringify(INITIAL_EVENTS));
         localStorage.setItem('crm_permissions', JSON.stringify(DEFAULT_PERMISSIONS));
         localStorage.setItem('crm_audit_logs', JSON.stringify([]));
+        localStorage.setItem('crm_attendance', JSON.stringify([]));
     }
 
     // Load data from LocalStorage to application state
@@ -160,6 +161,7 @@ function initData() {
     state.events = JSON.parse(localStorage.getItem('crm_events'));
     state.permissions = JSON.parse(localStorage.getItem('crm_permissions'));
     state.audit_logs = JSON.parse(localStorage.getItem('crm_audit_logs')) || [];
+    state.attendance = JSON.parse(localStorage.getItem('crm_attendance')) || [];
     state.currentTheme = localStorage.getItem('crm_theme') || 'light';
     
     // Set active user (Default to Daniel Havlíček DHA)
@@ -222,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.clients = JSON.parse(localStorage.getItem('crm_clients')) || state.clients;
         state.workers = JSON.parse(localStorage.getItem('crm_workers')) || state.workers;
         state.events = JSON.parse(localStorage.getItem('crm_events')) || state.events;
+        state.attendance = JSON.parse(localStorage.getItem('crm_attendance')) || state.attendance;
         
         // 2. Refresh active views without closing opened modals
         // Only refresh map markers if map exists
@@ -250,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTab === 'klienti') renderClientsTable();
         if (activeTab === 'pracovnici') renderWorkersTable();
         if (activeTab === 'kalendar') renderCalendar();
+        if (activeTab === 'dochazka') renderAttendance();
     }, 30000); // 30000 ms = 30 seconds
 });
 
@@ -280,9 +284,13 @@ function setupNavigation() {
     // Handle back/forward/initial hash if present
     if (window.location.hash) {
         const tab = window.location.hash.substring(1);
-        if (['dashboard', 'uzivatele', 'klienti', 'pracovnici', 'kalendar', 'opravneni'].includes(tab)) {
+        if (['dashboard', 'uzivatele', 'klienti', 'pracovnici', 'kalendar', 'opravneni', 'audit', 'dochazka'].includes(tab)) {
             switchTab(tab);
+        } else {
+            switchTab('dashboard');
         }
+    } else {
+        switchTab('dashboard');
     }
 }
 
@@ -315,7 +323,8 @@ function switchTab(tabName) {
         'pracovnici': 'Pracovníci & Kontaktní osoby',
         'kalendar': 'Kalendář Plánovaných Událostí',
         'opravneni': 'Přístupová Práva a Oprávnění',
-        'audit': 'Historie Změn (Audit Log)'
+        'audit': 'Historie Změn (Audit Log)',
+        'dochazka': 'Evidence Docházky'
     };
     document.getElementById('current-section-title').textContent = titles[tabName] || 'CRM';
     
@@ -341,6 +350,9 @@ function switchTab(tabName) {
         renderCalendar();
     } else if (tabName === 'audit') {
         renderAuditLogsTable();
+    } else if (tabName === 'dochazka') {
+        initAttendanceFilters();
+        renderAttendance();
     }
 }
 
@@ -401,18 +413,15 @@ function checkSectionAccess(tabName) {
     // If permission not set, default to false (secure by default)
     const allowed = rolePermissions ? rolePermissions[tabName] : false;
     
-    // Hide/show navigation items based on permission to make UI cleaner
-    state.users.forEach(() => {
-        const navId = `nav-${tabName}`;
-        const navEl = document.getElementById(navId);
-        if (navEl) {
-            if (allowed) {
-                navEl.style.display = 'flex';
-            } else {
-                navEl.style.display = 'none';
-            }
+    const navId = `nav-${tabName}`;
+    const navEl = document.getElementById(navId);
+    if (navEl) {
+        if (allowed) {
+            navEl.style.display = 'flex';
+        } else {
+            navEl.style.display = 'none';
         }
-    });
+    }
 
     return allowed;
 }
@@ -448,6 +457,7 @@ function setupPermissionsTable() {
             <td class="text-center">${renderPermissionCheckbox(code, 'opravneni', perm.opravneni)}</td>
             <td class="text-center">${renderPermissionCheckbox(code, 'audit', perm.audit)}</td>
             <td class="text-center">${renderPermissionCheckbox(code, 'smazani', perm.smazani)}</td>
+            <td class="text-center">${renderPermissionCheckbox(code, 'dochazka', perm.dochazka)}</td>
         `;
         tableBody.appendChild(tr);
     });
@@ -2033,6 +2043,36 @@ function setupFormsAndModals() {
             switchTab('uzivatele');
         });
     }
+
+    // Bind Attendance quick action buttons
+    document.getElementById('btn-quick-arrival').addEventListener('click', recordQuickArrival);
+    document.getElementById('btn-quick-departure').addEventListener('click', recordQuickDeparture);
+    document.getElementById('btn-manual-attendance').addEventListener('click', () => openAttendanceModal());
+
+    // Bind Attendance filters
+    document.getElementById('filter-attendance-user').addEventListener('change', renderAttendance);
+    document.getElementById('filter-attendance-month').addEventListener('change', renderAttendance);
+    document.getElementById('filter-attendance-year').addEventListener('change', renderAttendance);
+
+    // Bind attendance modal submit
+    document.getElementById('form-attendance').addEventListener('submit', saveAttendance);
+    document.getElementById('btn-delete-attendance').addEventListener('click', deleteAttendance);
+
+    // Dynamically toggle times in attendance modal based on type selected
+    document.getElementById('attendance-type').addEventListener('change', (e) => {
+        const type = e.target.value;
+        const arrivalInput = document.getElementById('attendance-arrival');
+        const departureInput = document.getElementById('attendance-departure');
+        if (type === 'dovolená' || type === 'nemoc') {
+            arrivalInput.value = '';
+            departureInput.value = '';
+            arrivalInput.disabled = true;
+            departureInput.disabled = true;
+        } else {
+            arrivalInput.disabled = false;
+            departureInput.disabled = false;
+        }
+    });
 }
 
 function showModal(modalEl) {
@@ -2107,4 +2147,441 @@ function renderAuditLogsTable() {
         `;
         tbody.appendChild(tr);
     });
+}
+
+
+// ==========================================================================
+// 13. ATTENDANCE (DOCHÁZKA) CONTROLLER
+// ==========================================================================
+
+function initAttendanceFilters() {
+    const userSelect = document.getElementById('filter-attendance-user');
+    if (!userSelect) return;
+
+    // Save selected value to preserve selection during updates
+    const currentSelection = userSelect.value;
+    userSelect.innerHTML = '';
+
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    
+    if (userRole === 'ADMIN') {
+        // Admin sees all users
+        state.users.forEach(u => {
+            const option = document.createElement('option');
+            option.value = u.id;
+            option.textContent = u.jmeno;
+            userSelect.appendChild(option);
+        });
+        // Select back previous selection, or default to current user
+        userSelect.value = currentSelection || state.currentUser.id;
+        userSelect.disabled = false;
+    } else {
+        // Regular user only sees themselves
+        const option = document.createElement('option');
+        option.value = state.currentUser.id;
+        option.textContent = state.currentUser.jmeno;
+        userSelect.appendChild(option);
+        userSelect.value = state.currentUser.id;
+        userSelect.disabled = true;
+    }
+
+    // Set default month & year filter to today's date if not set
+    const monthSelect = document.getElementById('filter-attendance-month');
+    const yearSelect = document.getElementById('filter-attendance-year');
+    const today = new Date();
+    if (!monthSelect.value) {
+        monthSelect.value = today.getMonth() + 1;
+    }
+    if (!yearSelect.value) {
+        yearSelect.value = today.getFullYear();
+    }
+}
+
+function renderAttendance() {
+    const tbody = document.querySelector('#table-attendance tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    const userId = document.getElementById('filter-attendance-user').value;
+    const month = parseInt(document.getElementById('filter-attendance-month').value);
+    const year = parseInt(document.getElementById('filter-attendance-year').value);
+
+    const user = state.users.find(u => u.id === userId);
+    const selectedUserName = user ? user.jmeno : 'Neznámý';
+
+    // Filter attendance records by user & month & year
+    const filtered = state.attendance.filter(att => {
+        if (att.user_id !== userId) return false;
+        const attDate = new Date(att.datum);
+        return (attDate.getMonth() + 1) === month && attDate.getFullYear() === year;
+    }).sort((a, b) => new Date(a.datum) - new Date(b.datum));
+
+    // Stats counter variables
+    let totalWorkHours = 0;
+    let totalVacDays = 0;
+    let totalNvHours = 0;
+    let totalDoctorHours = 0;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const isAdmin = (userRole === 'ADMIN');
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">V tomto měsíci nejsou zaevidovány žádné docházkové záznamy.</td></tr>`;
+    } else {
+        filtered.forEach(att => {
+            const tr = document.createElement('tr');
+            
+            // Calculate work hours if applicable
+            let hoursDiffStr = '--';
+            let hoursDiff = 0;
+            if (att.prichod && att.odchod && (att.typ === 'práce' || att.typ === 'lékař' || att.typ === 'náhradní volno')) {
+                const arrTime = att.prichod.split(':');
+                const depTime = att.odchod.split(':');
+                const arrMin = parseInt(arrTime[0]) * 60 + parseInt(arrTime[1]);
+                const depMin = parseInt(depTime[0]) * 60 + parseInt(depTime[1]);
+                if (depMin > arrMin) {
+                    hoursDiff = (depMin - arrMin) / 60;
+                    hoursDiffStr = `${hoursDiff.toFixed(1)} h`;
+                }
+            }
+
+            // Summarize stats
+            if (att.typ === 'práce') {
+                totalWorkHours += hoursDiff;
+            } else if (att.typ === 'dovolená') {
+                totalVacDays += 1;
+            } else if (att.typ === 'náhradní volno') {
+                totalNvHours += hoursDiff;
+            } else if (att.typ === 'lékař') {
+                totalDoctorHours += hoursDiff;
+            }
+
+            // Rules for editing/deleting:
+            // Regular user: can only edit TODAY's records, cannot delete.
+            // Admin: can edit and delete anything.
+            const isToday = (att.datum === todayStr);
+            const canEdit = isAdmin || isToday;
+            const canDelete = isAdmin;
+
+            let typeBadgeClass = 'badge-role';
+            if (att.typ === 'dovolená') typeBadgeClass = 'badge-edit';
+            if (att.typ === 'nemoc') typeBadgeClass = 'badge-delete';
+            if (att.typ === 'lékař') typeBadgeClass = 'badge-role';
+            if (att.typ === 'náhradní volno') typeBadgeClass = 'badge-create';
+
+            tr.innerHTML = `
+                <td><code>${new Date(att.datum).toLocaleDateString('cs-CZ')}</code></td>
+                <td><span class="${typeBadgeClass}">${att.typ.toUpperCase()}</span></td>
+                <td>${att.prichod || '--'}</td>
+                <td>${att.odchod || '--'}</td>
+                <td><strong>${hoursDiffStr}</strong></td>
+                <td><span style="font-size: 0.82rem; color: var(--text-secondary);">${att.poznamka || '--'}</span></td>
+                <td class="text-right">
+                    ${canEdit ? `<button class="btn btn-secondary btn-sm btn-edit-att" data-id="${att.id}">Upravit</button>` : '<span class="text-muted" style="font-size:0.8rem;">Uzamčeno</span>'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Wire up edit buttons
+        tbody.querySelectorAll('.btn-edit-att').forEach(btn => {
+            btn.addEventListener('click', () => openAttendanceModal(btn.getAttribute('data-id')));
+        });
+    }
+
+    // Write counts to UI
+    document.getElementById('att-sum-work').textContent = `${totalWorkHours.toFixed(1)} h`;
+    document.getElementById('att-sum-vacation').textContent = `${totalVacDays} dnů`;
+    document.getElementById('att-sum-nv').textContent = `${totalNvHours.toFixed(1)} h`;
+    document.getElementById('att-sum-doctor').textContent = `${totalDoctorHours.toFixed(1)} h`;
+}
+
+function recordQuickArrival() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const userId = state.currentUser.id;
+
+    // Check if there is already an arrival today
+    const existing = state.attendance.find(att => att.user_id === userId && att.datum === todayStr);
+    if (existing) {
+        alert("Dnešní příchod již byl zaznamenán! Pro úpravu klikněte na 'Upravit' v tabulce.");
+        return;
+    }
+
+    const now = new Date();
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const initials = state.currentUser.zkratka;
+
+    const newEntry = {
+        id: 'att_' + Date.now(),
+        user_id: userId,
+        user_name: state.currentUser.jmeno,
+        datum: todayStr,
+        prichod: timeStr,
+        odchod: '',
+        typ: 'práce',
+        poznamka: 'Rychlý příchod',
+        created_by: initials,
+        created_at: formatDateToISO(now),
+        updated_by: initials,
+        updated_at: formatDateToISO(now),
+        last_change_details: 'Záznam příchodu'
+    };
+
+    state.attendance.push(newEntry);
+    saveData('crm_attendance', state.attendance);
+    renderAttendance();
+    alert(`Příchod zaevidován v: ${timeStr}`);
+}
+
+function recordQuickDeparture() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const userId = state.currentUser.id;
+
+    // Check if arrival is registered
+    const existing = state.attendance.find(att => att.user_id === userId && att.datum === todayStr);
+    if (!existing) {
+        alert("Nejprve musíte zaevidovat příchod (tlačítko Příchod)!");
+        return;
+    }
+
+    const now = new Date();
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const initials = state.currentUser.zkratka;
+
+    existing.odchod = timeStr;
+    existing.updated_by = initials;
+    existing.updated_at = formatDateToISO(now);
+    existing.last_change_details = `Doplněn odchod v ${timeStr}`;
+
+    saveData('crm_attendance', state.attendance);
+    renderAttendance();
+    alert(`Odchod zaevidován v: ${timeStr}`);
+}
+
+function openAttendanceModal(attId = null) {
+    const modal = document.getElementById('modal-attendance');
+    const form = document.getElementById('form-attendance');
+    const title = document.getElementById('modal-attendance-title');
+    const deleteBtn = document.getElementById('btn-delete-attendance');
+    const typeSelect = document.getElementById('attendance-type');
+    const arrivalInput = document.getElementById('attendance-arrival');
+    const departureInput = document.getElementById('attendance-departure');
+
+    form.reset();
+    deleteBtn.classList.add('hidden');
+    arrivalInput.disabled = false;
+    departureInput.disabled = false;
+
+    // Populate defaults
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('attendance-date').value = todayStr;
+
+    // Configure permissions
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const isAdmin = (userRole === 'ADMIN');
+
+    if (attId) {
+        title.textContent = 'Upravit záznam docházky';
+        const att = state.attendance.find(a => a.id === attId);
+        
+        // Render audit info
+        renderAuditTrail('attendance-audit-info', att);
+
+        if (att) {
+            document.getElementById('attendance-id').value = att.id;
+            document.getElementById('attendance-date').value = att.datum;
+            typeSelect.value = att.typ;
+            arrivalInput.value = att.prichod || '';
+            departureInput.value = att.odchod || '';
+            document.getElementById('attendance-note').value = att.poznamka || '';
+
+            // Handle disability on type load
+            if (att.typ === 'dovolená' || att.typ === 'nemoc') {
+                arrivalInput.disabled = true;
+                departureInput.disabled = true;
+            }
+
+            // Only Admin can delete attendance records
+            if (isAdmin) {
+                deleteBtn.classList.remove('hidden');
+            }
+        }
+    } else {
+        title.textContent = 'Nový záznam docházky / absence';
+        document.getElementById('attendance-id').value = '';
+        renderAuditTrail('attendance-audit-info', null);
+    }
+
+    showModal(modal);
+}
+
+function saveAttendance(e) {
+    e.preventDefault();
+    const id = document.getElementById('attendance-id').value;
+    const datum = document.getElementById('attendance-date').value;
+    const typ = document.getElementById('attendance-type').value;
+    const prichod = document.getElementById('attendance-arrival').value;
+    const odchod = document.getElementById('attendance-departure').value;
+    const poznamka = document.getElementById('attendance-note').value;
+
+    const initials = state.currentUser ? state.currentUser.zkratka : 'SYSTEM';
+    const nowStr = formatDateToISO(new Date());
+
+    const activeUserRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const isAdmin = (activeUserRole === 'ADMIN');
+
+    // Attendance belongs to the user selected in the filter view currently, 
+    // or current logged-in user if creating/updating own logs.
+    let userId = state.currentUser.id;
+    if (isAdmin) {
+        userId = document.getElementById('filter-attendance-user').value;
+    }
+    const targetUserObj = state.users.find(u => u.id === userId);
+    const targetName = targetUserObj ? targetUserObj.jmeno : 'Neznámý';
+
+    if (prichod && odchod) {
+        const arr = prichod.split(':');
+        const dep = odchod.split(':');
+        if ((parseInt(dep[0])*60 + parseInt(dep[1])) <= (parseInt(arr[0])*60 + parseInt(arr[1]))) {
+            alert("Čas odchodu musí být později než čas příchodu!");
+            return;
+        }
+    }
+
+    if (id) {
+        // Edit mode
+        const index = state.attendance.findIndex(a => a.id === id);
+        if (index !== -1) {
+            const old = state.attendance[index];
+            const changes = [];
+            if (old.datum !== datum) changes.push(`Datum (${old.datum} -> ${datum})`);
+            if (old.typ !== typ) changes.push(`Typ (${old.typ} -> ${typ})`);
+            if (old.prichod !== prichod) changes.push(`Příchod (${old.prichod || 'neuveden'} -> ${prichod || 'neuveden'})`);
+            if (old.odchod !== odchod) changes.push(`Odchod (${old.odchod || 'neuveden'} -> ${odchod || 'neuveden'})`);
+            if (old.poznamka !== poznamka) changes.push(`Poznámka (změna)`);
+
+            const changeText = changes.length > 0 ? `Změna: ${changes.join(', ')}` : 'Beze změny hodnot';
+
+            // Check if changing type away from or to vacation/NV credits
+            handleAttendanceCreditsDiff(old.user_id, old, { typ, prichod, odchod });
+
+            state.attendance[index] = {
+                ...state.attendance[index],
+                datum, typ, prichod, odchod, poznamka,
+                updated_by: initials,
+                updated_at: nowStr,
+                last_change_details: changeText
+            };
+
+            // Log to global audit logs if admin edited someone else's log
+            if (old.user_id !== state.currentUser.id) {
+                logAuditEvent('ÚPRAVA', 'Docházka', targetName, `Admin ${initials} upravil docházku za den ${datum}: ${changeText}`);
+            } else {
+                logAuditEvent('ÚPRAVA', 'Docházka', targetName, `Změna docházky za den ${datum}: ${changeText}`);
+            }
+        }
+    } else {
+        // Create mode
+        // Prevent duplicate entries for same user & date
+        const duplicate = state.attendance.find(a => a.user_id === userId && a.datum === datum);
+        if (duplicate) {
+            alert(`Záznam docházky pro ${targetName} na den ${datum} již existuje!`);
+            return;
+        }
+
+        const newEntry = {
+            id: 'att_' + Date.now(),
+            user_id: userId,
+            user_name: targetName,
+            datum, typ, prichod, odchod, poznamka,
+            created_by: initials,
+            created_at: nowStr,
+            updated_by: initials,
+            updated_at: nowStr,
+            last_change_details: 'Ruční zápis docházky'
+        };
+
+        // Charge vacation / NV credits if applicable
+        handleAttendanceCreditsDiff(userId, null, newEntry);
+
+        state.attendance.push(newEntry);
+        
+        if (userId !== state.currentUser.id) {
+            logAuditEvent('VYTVOŘENÍ', 'Docházka', targetName, `Admin ${initials} vytvořil docházku za den ${datum} (Typ: ${typ})`);
+        } else {
+            logAuditEvent('VYTVOŘENÍ', 'Docházka', targetName, `Vytvoření docházky za den ${datum} (Typ: ${typ})`);
+        }
+    }
+
+    saveData('crm_attendance', state.attendance);
+    closeAllModals();
+    renderAttendance();
+}
+
+function deleteAttendance() {
+    const id = document.getElementById('attendance-id').value;
+    if (!id) return;
+
+    const att = state.attendance.find(a => a.id === id);
+    if (!att) return;
+
+    const targetUserObj = state.users.find(u => u.id === att.user_id);
+    const targetName = targetUserObj ? targetUserObj.jmeno : 'Neznámý';
+
+    if (confirm(`Opravdu chcete smazat tento docházkový záznam na den ${att.datum}?`)) {
+        // Refund vacation/NV credits on delete
+        handleAttendanceCreditsDiff(att.user_id, att, null);
+
+        state.attendance = state.attendance.filter(a => a.id !== id);
+        saveData('crm_attendance', state.attendance);
+
+        logAuditEvent('SMAZÁNÍ', 'Docházka', targetName, `Smazání docházky za den ${att.datum} (Původní typ: ${att.typ})`);
+
+        closeAllModals();
+        renderAttendance();
+    }
+}
+
+// Helper function to calculate credits changes when vacations or NV is spent/cancelled
+function handleAttendanceCreditsDiff(userId, oldVal, newVal) {
+    const userIndex = state.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) return;
+
+    const user = state.users[userIndex];
+
+    // 1. REFUND OLD VALUES
+    if (oldVal) {
+        if (oldVal.typ === 'dovolená') {
+            user.dny_dovolena = (user.dny_dovolena || 0) + 1; // Return 1 vacation day
+        } else if (oldVal.typ === 'náhradní volno' && oldVal.prichod && oldVal.odchod) {
+            const arr = oldVal.prichod.split(':');
+            const dep = oldVal.odchod.split(':');
+            const diffHours = (parseInt(dep[0])*60 + parseInt(dep[1]) - (parseInt(arr[0])*60 + parseInt(arr[1]))) / 60;
+            user.hod_nv = (user.hod_nv || 0) + Math.round(diffHours); // Return NV hours
+        }
+    }
+
+    // 2. APPLY NEW VALUES
+    if (newVal) {
+        if (newVal.typ === 'dovolená') {
+            user.dny_dovolena = Math.max(0, (user.dny_dovolena || 0) - 1); // Deduct 1 vacation day
+        } else if (newVal.typ === 'náhradní volno' && newVal.prichod && newVal.odchod) {
+            const arr = newVal.prichod.split(':');
+            const dep = newVal.odchod.split(':');
+            const diffHours = (parseInt(dep[0])*60 + parseInt(dep[1]) - (parseInt(arr[0])*60 + parseInt(arr[1]))) / 60;
+            user.hod_nv = Math.max(0, (user.hod_nv || 0) - Math.round(diffHours)); // Deduct NV hours
+        }
+    }
+
+    state.users[userIndex] = user;
+    saveData('crm_users', state.users);
+    
+    // Refresh user grid
+    renderUsersTable();
+}
+
+function pad(num) {
+    return String(num).padStart(2, '0');
 }

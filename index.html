@@ -65,6 +65,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
                     <span>Historie Změn</span>
                 </a>
+                <a href="#dochazka" class="nav-item" data-tab="dochazka" id="nav-dochazka">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Docházka</span>
+                </a>
             </nav>
             
             <div class="sidebar-footer">
@@ -398,6 +402,7 @@
                                             <th class="text-center">Práva</th>
                                             <th class="text-center">Historie</th>
                                             <th class="text-center">Mazání</th>
+                                            <th class="text-center">Docházka</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -456,6 +461,127 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 8. ATTENDANCE (DOCHÁZKA) VIEW -->
+                <div id="dochazka-view" class="view hidden">
+                    <!-- Quick action buttons (Only active day) -->
+                    <div class="card" id="dochazka-quick-actions" style="margin-bottom: 20px;">
+                        <div class="card-body" style="display: flex; gap: 15px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <span style="font-size: 1.5rem;">⏱️</span>
+                                <div>
+                                    <strong style="font-size: 1.05rem;">Rychlá evidence (Dnes)</strong>
+                                    <p class="text-muted" style="font-size: 0.8rem; margin: 0;">Zaevidujte příchod nebo odchod jedním kliknutím.</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" class="btn btn-success" id="btn-quick-arrival">📥 Příchod</button>
+                                <button type="button" class="btn btn-danger" id="btn-quick-departure">📤 Odchod</button>
+                                <button type="button" class="btn btn-primary" id="btn-manual-attendance">+ Zapsat Ručně / Absenci</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="view-header">
+                        <h1>Evidence Docházky</h1>
+                    </div>
+
+                    <div class="view-content">
+                        <!-- Filters panel -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-body" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                                <!-- User filter (Admin only dropdown / locked text for user) -->
+                                <div class="form-group" style="min-width: 250px; margin: 0;">
+                                    <label for="filter-attendance-user" style="margin-bottom: 4px; font-weight:600;">Zaměstnanec</label>
+                                    <select id="filter-attendance-user" class="form-select">
+                                        <!-- Dynamically populated by JS -->
+                                    </select>
+                                </div>
+
+                                <!-- Month filter -->
+                                <div class="form-group" style="min-width: 180px; margin: 0;">
+                                    <label for="filter-attendance-month" style="margin-bottom: 4px; font-weight:600;">Měsíc</label>
+                                    <select id="filter-attendance-month" class="form-select">
+                                        <option value="1">Leden</option>
+                                        <option value="2">Únor</option>
+                                        <option value="3">Březen</option>
+                                        <option value="4">Duben</option>
+                                        <option value="5">Květen</option>
+                                        <option value="6">Červen</option>
+                                        <option value="7">Červenec</option>
+                                        <option value="8">Srpen</option>
+                                        <option value="9">Září</option>
+                                        <option value="10">Říjen</option>
+                                        <option value="11">Listopad</option>
+                                        <option value="12">Prosinec</option>
+                                    </select>
+                                </div>
+
+                                <!-- Year filter -->
+                                <div class="form-group" style="min-width: 120px; margin: 0;">
+                                    <label for="filter-attendance-year" style="margin-bottom: 4px; font-weight:600;">Rok</label>
+                                    <select id="filter-attendance-year" class="form-select">
+                                        <option value="2025">2025</option>
+                                        <option value="2026" selected>2026</option>
+                                        <option value="2027">2027</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="table-responsive">
+                                <table class="table" id="table-attendance">
+                                    <colgroup>
+                                        <col style="width: 120px">  <!-- Datum -->
+                                        <col style="width: 120px">  <!-- Typ -->
+                                        <col style="width: 100px">  <!-- Příchod -->
+                                        <col style="width: 100px">  <!-- Odchod -->
+                                        <col style="width: 120px">  <!-- Odpracováno -->
+                                        <col style="width: auto">   <!-- Poznámka -->
+                                        <col style="width: 160px">  <!-- Akce -->
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Typ dne</th>
+                                            <th>Příchod</th>
+                                            <th>Odchod</th>
+                                            <th>Odpracováno (h)</th>
+                                            <th>Poznámka</th>
+                                            <th class="text-right">Akce</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Summary Cards -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <span class="stat-title">Odpracováno celkem</span>
+                                <span class="stat-value" id="att-sum-work">0.0 h</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-title">Čerpaná Dovolená</span>
+                                <span class="stat-value" id="att-sum-vacation" style="color: var(--primary);">0 dnů</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-title">Čerpané Náhradní Volno (NV)</span>
+                                <span class="stat-value" id="att-sum-nv" style="color: #8b5cf6;">0 h</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-title">Lékař / Ostatní překážky</span>
+                                <span class="stat-value" id="att-sum-doctor" style="color: #f97316;">0 h</span>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -739,6 +865,54 @@
                 <div class="footer-left">
                     <button type="button" class="btn btn-danger hidden" id="btn-delete-event">Smazat událost</button>
                     <button type="button" class="btn hidden" id="btn-complete-event" style="color: white;">✓ Dokončit</button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
+                <button type="submit" class="btn btn-primary">Uložit</button>
+            </div>
+        </form>
+    <!-- 5. ATTENDANCE MODAL -->
+    <div class="modal hidden" id="modal-attendance">
+        <div class="modal-header">
+            <h3 id="modal-attendance-title">Záznam docházky / absence</h3>
+            <button class="btn-close-modal">&times;</button>
+        </div>
+        <form id="form-attendance">
+            <input type="hidden" id="attendance-id">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group col-full">
+                        <label for="attendance-date" class="required">Datum</label>
+                        <input type="date" id="attendance-date" class="form-control" required>
+                    </div>
+                    <div class="form-group col-full">
+                        <label for="attendance-type" class="required">Typ docházky</label>
+                        <select id="attendance-type" class="form-select" required>
+                            <option value="práce" selected>Práce</option>
+                            <option value="dovolená">Dovolená (celodenní)</option>
+                            <option value="lékař">Lékař</option>
+                            <option value="náhradní volno">Náhradní Volno (NV)</option>
+                            <option value="nemoc">Nemoc (celodenní)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="attendance-arrival">Příchod (Čas)</label>
+                        <input type="time" id="attendance-arrival" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="attendance-departure">Odchod (Čas)</label>
+                        <input type="time" id="attendance-departure" class="form-control">
+                    </div>
+                    <div class="form-group col-full">
+                        <label for="attendance-note">Poznámka / Popis</label>
+                        <textarea id="attendance-note" class="form-control" rows="2" placeholder="Popište odvedenou práci nebo důvod absence..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <!-- Audit trail info placeholder -->
+            <div id="attendance-audit-info" class="audit-info text-muted" style="padding: 0 24px; font-size: 0.8rem; display: none; margin-bottom: 10px;"></div>
+            <div class="modal-footer">
+                <div class="footer-left">
+                    <button type="button" class="btn btn-danger hidden" id="btn-delete-attendance">Smazat záznam</button>
                 </div>
                 <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
                 <button type="submit" class="btn btn-primary">Uložit</button>
