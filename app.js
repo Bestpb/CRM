@@ -347,6 +347,7 @@ function switchTab(tabName) {
     } else if (tabName === 'pracovnici') {
         renderWorkersTable();
     } else if (tabName === 'kalendar') {
+        populateCalendarFilters();
         renderCalendar();
     } else if (tabName === 'audit') {
         renderAuditLogsTable();
@@ -1588,10 +1589,18 @@ function renderCalendarCell(dateObj, isCurrentMonth, eventsList, isToday = false
         if (e.link_client_id) traceClass = 'linked-client';
         else if (e.link_worker_id) traceClass = 'linked-worker';
         
+        // Find user initials
+        const userObj = state.users.find(u => u.id === e.uzivatel_id);
+        const initials = userObj ? userObj.zkratka : '??';
+
+        const isCompleted = !!e.datum_kon;
+        const completedClass = isCompleted ? 'event-completed' : '';
+
         eventsHTML += `
-            <div class="calendar-event ${e.typ === 'úkol' ? 'task-type' : 'meeting-type'} ${traceClass}" 
-                 data-id="${e.id}" title="${e.nazev} (${e.uzivatel})">
-                ${pad(new Date(e.datum_plan).getHours())}:${pad(new Date(e.datum_plan).getMinutes())} ${e.nazev}
+            <div class="calendar-event ${e.typ === 'úkol' ? 'task-type' : 'meeting-type'} ${traceClass} ${completedClass}" 
+                 data-id="${e.id}" title="${e.nazev} (${e.uzivatel}) ${isCompleted ? '[SPLNĚNO]' : ''}">
+                 <span class="event-user-badge" style="font-weight: bold; background: rgba(0,0,0,0.15); padding: 1px 4px; border-radius: 3px; font-size: 0.72rem; margin-right: 4px;">${initials}</span>
+                 <span>${pad(new Date(e.datum_plan).getHours())}:${pad(new Date(e.datum_plan).getMinutes())} ${e.nazev}</span>
             </div>
         `;
     });
@@ -1629,15 +1638,32 @@ document.getElementById('btn-calendar-today').addEventListener('click', () => {
 function populateCalendarFilters() {
     const filterUserSelect = document.getElementById('filter-event-user');
     const val = filterUserSelect.value;
-    filterUserSelect.innerHTML = '<option value="all">Všichni uživatelé</option>';
+    filterUserSelect.innerHTML = '';
     
+    // 1. "Všichni" option
+    const optAll = document.createElement('option');
+    optAll.value = 'all';
+    optAll.textContent = 'Všichni uživatelé';
+    filterUserSelect.appendChild(optAll);
+
+    // 2. "Jen já" dynamic option
+    if (state.currentUser) {
+        const optMe = document.createElement('option');
+        optMe.value = state.currentUser.id;
+        optMe.textContent = `Pouze já (${state.currentUser.jmeno})`;
+        filterUserSelect.appendChild(optMe);
+    }
+
+    // 3. Divider / other users list
     state.users.forEach(u => {
+        if (state.currentUser && u.id === state.currentUser.id) return; // skip duplicate me
         const option = document.createElement('option');
         option.value = u.id;
         option.textContent = u.jmeno;
         filterUserSelect.appendChild(option);
     });
-    filterUserSelect.value = val;
+
+    filterUserSelect.value = val || 'all';
 }
 
 
