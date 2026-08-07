@@ -1060,6 +1060,11 @@ body {
 }
 
 /* Map Popups styling */
+.custom-map-pin {
+    background: none !important;
+    border: none !important;
+}
+
 .leaflet-popup-content-wrapper {
     background-color: var(--bg-sidebar);
     color: var(--text-primary);
