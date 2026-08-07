@@ -61,6 +61,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                     <span>Přístupová Práva</span>
                 </a>
+                <a href="#audit" class="nav-item" data-tab="audit" id="nav-audit">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
+                    <span>Historie Změn</span>
+                </a>
             </nav>
             
             <div class="sidebar-footer">
@@ -392,6 +396,7 @@
                                             <th class="text-center">Pracovníci</th>
                                             <th class="text-center">Kalendář</th>
                                             <th class="text-center">Práva</th>
+                                            <th class="text-center">Historie</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -406,6 +411,48 @@
                                     <strong>Jak to funguje?</strong>
                                     <p>Změňte přihlášeného uživatele v pravém horním rohu aplikace. Pokud zvolíte uživatele s kódem, který nemá povolenou např. sekci "Uživatelé", tato sekce v postranním panelu zmizí nebo se zobrazí chybová hláška o odepření přístupu.</p>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. AUDIT LOG VIEW -->
+                <div id="audit-view" class="view hidden">
+                    <div class="view-header">
+                        <h1>Historie Změn (Audit Log)</h1>
+                    </div>
+                    <div class="view-content">
+                        <!-- Filters and Actions -->
+                        <div class="table-actions">
+                            <input type="text" id="search-audit" class="form-control" placeholder="Hledat v historii změn (uživatel, typ, popis)..." style="max-width: 400px;">
+                            <button class="btn btn-secondary btn-sm" id="btn-clear-audit" style="margin-left: auto;">Smazat historii</button>
+                        </div>
+                        <!-- Table -->
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table class="table" id="table-audit">
+                                    <colgroup>
+                                        <col style="width: 150px">  <!-- Čas a datum -->
+                                        <col style="width: 80px">   <!-- Uživatel -->
+                                        <col style="width: 100px">  <!-- Typ akce -->
+                                        <col style="width: 120px">  <!-- Sekce/Objekt -->
+                                        <col style="width: 160px">  <!-- Název entity -->
+                                        <col style="width: auto">   <!-- Detailní popis -->
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th>Datum a Čas</th>
+                                            <th>Uživatel</th>
+                                            <th>Akce</th>
+                                            <th>Modul</th>
+                                            <th>Záznam</th>
+                                            <th>Detailní popis změn</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -472,6 +519,8 @@
                     </div>
                 </div>
             </div>
+            <!-- Audit trail info placeholder -->
+            <div id="user-audit-info" class="audit-info text-muted" style="padding: 0 24px; font-size: 0.8rem; display: none; margin-bottom: 10px;"></div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
                 <button type="submit" class="btn btn-primary">Uložit</button>
@@ -548,6 +597,8 @@
                     </div>
                 </div>
             </div>
+            <!-- Audit trail info placeholder -->
+            <div id="client-audit-info" class="audit-info text-muted" style="padding: 0 24px; font-size: 0.8rem; display: none;"></div>
             <div class="modal-footer">
                 <div class="footer-left" style="display: flex; align-items: center;">
                     <button type="button" class="btn btn-secondary btn-sm" id="btn-add-event-from-client">+ Zadat událost klientovi</button>
@@ -599,6 +650,8 @@
                     </div>
                 </div>
             </div>
+            <!-- Audit trail info placeholder -->
+            <div id="worker-audit-info" class="audit-info text-muted" style="padding: 0 24px; font-size: 0.8rem; display: none; margin-bottom: 10px;"></div>
             <div class="modal-footer">
                 <div class="footer-left" style="display: flex; align-items: center;">
                     <button type="button" class="btn btn-secondary btn-sm" id="btn-add-event-from-worker">+ Zadat událost pracovníkovi</button>
@@ -679,6 +732,8 @@
                     </div>
                 </div>
             </div>
+            <!-- Audit trail info placeholder -->
+            <div id="event-audit-info" class="audit-info text-muted" style="padding: 0 24px; font-size: 0.8rem; display: none;"></div>
             <div class="modal-footer">
                 <div class="footer-left">
                     <button type="button" class="btn btn-danger hidden" id="btn-delete-event">Smazat událost</button>

@@ -379,6 +379,7 @@ body {
     gap: 20px;
     box-shadow: var(--shadow-sm);
     transition: all var(--transition-fast);
+    cursor: pointer;
 }
 
 .stat-card:hover {
@@ -1190,4 +1191,32 @@ body {
     .col-full {
         grid-column: span 1;
     }
+}
+
+/* Audit Log Action Badges */
+.badge-create {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-edit {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-delete {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
 }

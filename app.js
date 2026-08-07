@@ -18,6 +18,7 @@ let state = {
     events: [],
     clients: [],
     workers: [],
+    audit_logs: [],
     permissions: {},
     currentUser: null,
     currentTheme: 'light',
@@ -29,10 +30,10 @@ let state = {
 // Access Level Code definitions (KOD-PRISTUP)
 // We map each KOD-PRISTUP code to permitted tabs.
 const DEFAULT_PERMISSIONS = {
-    "ADMIN": { name: "Administrátor", dashboard: true, uzivatele: true, klienti: true, pracovnici: true, kalendar: true, opravneni: true },
-    "OBCHODNIK": { name: "Obchodní zástupce", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false },
-    "ASISTENT": { name: "Asistent/ka", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false },
-    "HOST": { name: "Host (Čtenář)", dashboard: true, uzivatele: false, klienti: true, pracovnici: false, kalendar: true, opravneni: false }
+    "ADMIN": { name: "Administrátor", dashboard: true, uzivatele: true, klienti: true, pracovnici: true, kalendar: true, opravneni: true, audit: true },
+    "OBCHODNIK": { name: "Obchodní zástupce", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false },
+    "ASISTENT": { name: "Asistent/ka", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false },
+    "HOST": { name: "Host (Čtenář)", dashboard: true, uzivatele: false, klienti: true, pracovnici: false, kalendar: true, opravneni: false, audit: false }
 };
 
 // Initial/Mock Data in Czech language for immediate demonstration
@@ -149,6 +150,7 @@ function initData() {
         localStorage.setItem('crm_workers', JSON.stringify(INITIAL_WORKERS));
         localStorage.setItem('crm_events', JSON.stringify(INITIAL_EVENTS));
         localStorage.setItem('crm_permissions', JSON.stringify(DEFAULT_PERMISSIONS));
+        localStorage.setItem('crm_audit_logs', JSON.stringify([]));
     }
 
     // Load data from LocalStorage to application state
@@ -157,6 +159,7 @@ function initData() {
     state.workers = JSON.parse(localStorage.getItem('crm_workers'));
     state.events = JSON.parse(localStorage.getItem('crm_events'));
     state.permissions = JSON.parse(localStorage.getItem('crm_permissions'));
+    state.audit_logs = JSON.parse(localStorage.getItem('crm_audit_logs')) || [];
     state.currentTheme = localStorage.getItem('crm_theme') || 'light';
     
     // Set active user (Default to Daniel Havlíček DHA)
@@ -311,7 +314,8 @@ function switchTab(tabName) {
         'klienti': 'Databáze Klientů',
         'pracovnici': 'Pracovníci & Kontaktní osoby',
         'kalendar': 'Kalendář Plánovaných Událostí',
-        'opravneni': 'Přístupová Práva a Oprávnění'
+        'opravneni': 'Přístupová Práva a Oprávnění',
+        'audit': 'Historie Změn (Audit Log)'
     };
     document.getElementById('current-section-title').textContent = titles[tabName] || 'CRM';
     
@@ -335,6 +339,8 @@ function switchTab(tabName) {
         renderWorkersTable();
     } else if (tabName === 'kalendar') {
         renderCalendar();
+    } else if (tabName === 'audit') {
+        renderAuditLogsTable();
     }
 }
 
@@ -440,6 +446,7 @@ function setupPermissionsTable() {
             <td class="text-center">${renderPermissionCheckbox(code, 'pracovnici', perm.pracovnici)}</td>
             <td class="text-center">${renderPermissionCheckbox(code, 'kalendar', perm.kalendar)}</td>
             <td class="text-center">${renderPermissionCheckbox(code, 'opravneni', perm.opravneni)}</td>
+            <td class="text-center">${renderPermissionCheckbox(code, 'audit', perm.audit)}</td>
         `;
         tableBody.appendChild(tr);
     });
@@ -858,6 +865,9 @@ function openUserModal(userId = null) {
 
     form.reset();
 
+    // Render audit trail info
+    renderAuditTrail('user-audit-info', userId ? state.users.find(u => u.id === userId) : null);
+
     if (userId) {
         title.textContent = 'Upravit Uživatele';
         const user = state.users.find(u => u.id === userId);
@@ -881,6 +891,40 @@ function openUserModal(userId = null) {
     showModal(modal);
 }
 
+// Universal helper to display created/updated metadata inside modal footers for ADMIN / Authorized roles
+function renderAuditTrail(elementId, entity) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // Check if current simulated user has access to permissions
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const rolePermissions = state.permissions[userRole];
+    const hasPermissionView = rolePermissions ? rolePermissions['opravneni'] : false;
+
+    if (!hasPermissionView || !entity) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+    }
+
+    const createdBy = entity.created_by || 'SYSTEM';
+    const createdAt = entity.created_at ? new Date(entity.created_at).toLocaleString('cs-CZ') : 'Neznámé';
+    const updatedBy = entity.updated_by || createdBy;
+    const updatedAt = entity.updated_at ? new Date(entity.updated_at).toLocaleString('cs-CZ') : createdAt;
+    const changeDetails = entity.last_change_details || 'Počáteční import dat';
+
+    el.style.display = 'block';
+    el.innerHTML = `
+        <div style="border-top: 1px solid var(--border-glass); padding-top: 8px; margin-top: 8px; line-height: 1.4;">
+            <div>ℹ️ <strong>Vytvořil:</strong> ${createdBy} (${createdAt})</div>
+            <div>ℹ️ <strong>Naposledy změnil:</strong> ${updatedBy} (${updatedAt})</div>
+            <div style="margin-top: 4px; font-style: italic; font-size: 0.78rem; color: var(--text-secondary);">
+                📝 <strong>Poslední změna:</strong> ${changeDetails}
+            </div>
+        </div>
+    `;
+}
+
 function saveUser(e) {
     e.preventDefault();
     const id = document.getElementById('user-id').value;
@@ -894,22 +938,46 @@ function saveUser(e) {
     const dny_dovolena = parseInt(document.getElementById('user-dovolenana').value);
     const hod_nv = parseInt(document.getElementById('user-hod-nv').value);
 
+    const activeUser = state.currentUser ? state.currentUser.zkratka : 'SYSTEM';
+    const nowStr = formatDateToISO(new Date());
+
     if (id) {
         // Edit mode
         const index = state.users.findIndex(u => u.id === id);
         if (index !== -1) {
+            const old = state.users[index];
+            const changes = [];
+            if (old.jmeno !== jmeno) changes.push(`Jméno (${old.jmeno} -> ${jmeno})`);
+            if (old.zkratka !== zkratka) changes.push(`Zkratka (${old.zkratka} -> ${zkratka})`);
+            if (old.kod_pristup !== kod_pristup) changes.push(`Přístup (${old.kod_pristup} -> ${kod_pristup})`);
+            if (old.heslo !== heslo) changes.push(`Heslo (změněno)`);
+            if (old.dny_dovolena !== dny_dovolena) changes.push(`Dovolená (${old.dny_dovolena} -> ${dny_dovolena} d)`);
+            if (old.hod_nv !== hod_nv) changes.push(`NV (${old.hod_nv} -> ${hod_nv} h)`);
+
+            const changeText = changes.length > 0 ? `Změna: ${changes.join(', ')}` : 'Beze změny hodnot';
+
             state.users[index] = { 
                 ...state.users[index], 
-                jmeno, zkratka, kod_pristup, nastup_datum, vystup_datum, datum_nar, heslo, dny_dovolena, hod_nv 
+                jmeno, zkratka, kod_pristup, nastup_datum, vystup_datum, datum_nar, heslo, dny_dovolena, hod_nv,
+                updated_by: activeUser,
+                updated_at: nowStr,
+                last_change_details: changeText
             };
+            logAuditEvent('ÚPRAVA', 'Uživatelé', jmeno, changeText);
         }
     } else {
         // Add mode
         const por_cislo = getNextPorCislo(state.users);
         const newId = String(por_cislo);
         state.users.push({
-            id: newId, por_cislo, jmeno, zkratka, kod_pristup, nastup_datum, vystup_datum, datum_nar, heslo, dny_dovolena, hod_nv
+            id: newId, por_cislo, jmeno, zkratka, kod_pristup, nastup_datum, vystup_datum, datum_nar, heslo, dny_dovolena, hod_nv,
+            created_by: activeUser,
+            created_at: nowStr,
+            updated_by: activeUser,
+            updated_at: nowStr,
+            last_change_details: 'Vytvoření nového uživatele'
         });
+        logAuditEvent('VYTVOŘENÍ', 'Uživatelé', jmeno, 'Vytvoření nového uživatelského účtu v CRM');
     }
 
     saveData('crm_users', state.users);
@@ -923,9 +991,13 @@ function deleteUser(userId) {
         alert("Nemůžete smazat sami sebe (aktuálně simulovaného uživatele)!");
         return;
     }
+    const targetUser = state.users.find(u => u.id === userId);
+    const targetName = targetUser ? targetUser.jmeno : 'Neznámý';
+    
     if (confirm("Opravdu chcete smazat tohoto uživatele? Tato akce je nevratná.")) {
         state.users = state.users.filter(u => u.id !== userId);
         saveData('crm_users', state.users);
+        logAuditEvent('SMAZÁNÍ', 'Uživatelé', targetName, `Smazání uživatelského účtu (Zkratka: ${targetUser ? targetUser.zkratka : '?'})`);
         renderUsersTable();
         populateUserSimulator();
     }
@@ -1004,6 +1076,9 @@ function openClientModal(clientId = null) {
     form.reset();
     linkedInfo.innerHTML = '';
 
+    // Render audit trail info
+    renderAuditTrail('client-audit-info', clientId ? state.clients.find(c => c.id === clientId) : null);
+
     if (clientId) {
         title.textContent = 'Detail / Upravit Klienta';
         const client = state.clients.find(c => c.id === clientId);
@@ -1054,19 +1129,45 @@ function saveClient(e) {
     const spv2 = document.getElementById('client-spv2').checked;
     const spv3 = document.getElementById('client-spv3').checked;
 
+    const activeUser = state.currentUser ? state.currentUser.zkratka : 'SYSTEM';
+    const nowStr = formatDateToISO(new Date());
+
     if (id) {
         const index = state.clients.findIndex(c => c.id === id);
         if (index !== -1) {
+            const old = state.clients[index];
+            const changes = [];
+            if (old.nazev !== nazev) changes.push(`Název (${old.nazev} -> ${nazev})`);
+            if (old.ulice !== ulice || old.mesto !== mesto) changes.push(`Adresa (${old.ulice}, ${old.mesto} -> ${ulice}, ${mesto})`);
+            if (old.velikost !== velikost) changes.push(`Velikost (${old.velikost} -> ${velikost})`);
+            if (old.typ_vyroby !== typ_vyroby) changes.push(`Výroba (${old.typ_vyroby} -> ${typ_vyroby})`);
+            if (old.souradnice !== souradnice) changes.push(`GPS (změna)`);
+            if (old.spv1 !== spv1) changes.push(`SPV1 (${old.spv1} -> ${spv1})`);
+            if (old.spv2 !== spv2) changes.push(`SPV2 (${old.spv2} -> ${spv2})`);
+            if (old.spv3 !== spv3) changes.push(`SPV3 (${old.spv3} -> ${spv3})`);
+
+            const changeText = changes.length > 0 ? `Změna: ${changes.join(', ')}` : 'Beze změny hodnot';
+
             state.clients[index] = { 
                 ...state.clients[index], 
-                nazev, ulice, psc, mesto, okres, stat, velikost, typ_vyroby, souradnice, spv1, spv2, spv3 
+                nazev, ulice, psc, mesto, okres, stat, velikost, typ_vyroby, souradnice, spv1, spv2, spv3,
+                updated_by: activeUser,
+                updated_at: nowStr,
+                last_change_details: changeText
             };
+            logAuditEvent('ÚPRAVA', 'Klienti', nazev, changeText);
         }
     } else {
         const newId = getNextId('c', state.clients);
         state.clients.push({
-            id: newId, nazev, ulice, psc, mesto, okres, stat, velikost, typ_vyroby, souradnice, spv1, spv2, spv3
+            id: newId, nazev, ulice, psc, mesto, okres, stat, velikost, typ_vyroby, souradnice, spv1, spv2, spv3,
+            created_by: activeUser,
+            created_at: nowStr,
+            updated_by: activeUser,
+            updated_at: nowStr,
+            last_change_details: 'Vytvoření nového klienta'
         });
+        logAuditEvent('VYTVOŘENÍ', 'Klienti', nazev, `Vytvoření nového klienta: ${nazev} (${mesto})`);
     }
 
     saveData('crm_clients', state.clients);
@@ -1076,6 +1177,9 @@ function saveClient(e) {
 }
 
 function deleteClient(clientId) {
+    const targetClient = state.clients.find(c => c.id === clientId);
+    const targetName = targetClient ? targetClient.nazev : 'Neznámý';
+
     if (confirm("Opravdu chcete smazat tohoto klienta? Budou smazáni i pracovníci a odpojeny události.")) {
         // Remove client
         state.clients = state.clients.filter(c => c.id !== clientId);
@@ -1093,6 +1197,7 @@ function deleteClient(clientId) {
         saveData('crm_workers', state.workers);
         saveData('crm_events', state.events);
         
+        logAuditEvent('SMAZÁNÍ', 'Klienti', targetName, `Smazání klienta včetně cascade mazání pracovníků`);
         renderClientsTable();
         renderMapMarkers();
     }
@@ -1237,6 +1342,9 @@ function openWorkerModal(workerId = null) {
     form.reset();
     linkedInfo.innerHTML = '';
 
+    // Render audit trail info
+    renderAuditTrail('worker-audit-info', workerId ? state.workers.find(w => w.id === workerId) : null);
+
     if (workerId) {
         title.textContent = 'Detail / Upravit Pracovníka';
         const worker = state.workers.find(w => w.id === workerId);
@@ -1275,19 +1383,47 @@ function saveWorker(e) {
     const email = document.getElementById('worker-email').value;
     const enews = document.getElementById('worker-enews').checked;
 
+    const activeUser = state.currentUser ? state.currentUser.zkratka : 'SYSTEM';
+    const nowStr = formatDateToISO(new Date());
+
     if (id) {
         const index = state.workers.findIndex(w => w.id === id);
         if (index !== -1) {
+            const old = state.workers[index];
+            const changes = [];
+            if (old.jmeno !== jmeno) changes.push(`Jméno (${old.jmeno} -> ${jmeno})`);
+            if (old.klient_id !== klient_id) {
+                const oldC = state.clients.find(c => c.id === old.klient_id);
+                const newC = state.clients.find(c => c.id === klient_id);
+                changes.push(`Firma (${oldC ? oldC.nazev : 'Bez firmy'} -> ${newC ? newC.nazev : 'Bez firmy'})`);
+            }
+            if (old.funkce !== funkce) changes.push(`Funkce (${old.funkce} -> ${funkce})`);
+            if (old.mobil !== mobil) changes.push(`Mobil (${old.mobil} -> ${mobil})`);
+            if (old.email !== email) changes.push(`Email (${old.email} -> ${email})`);
+            if (old.enews !== enews) changes.push(`Enews (${old.enews} -> ${enews})`);
+
+            const changeText = changes.length > 0 ? `Změna: ${changes.join(', ')}` : 'Beze změny hodnot';
+
             state.workers[index] = { 
                 ...state.workers[index], 
-                jmeno, klient_id, funkce, mobil, email, enews 
+                jmeno, klient_id, funkce, mobil, email, enews,
+                updated_by: activeUser,
+                updated_at: nowStr,
+                last_change_details: changeText
             };
+            logAuditEvent('ÚPRAVA', 'Pracovníci', jmeno, changeText);
         }
     } else {
         const newId = getNextId('w', state.workers);
         state.workers.push({
-            id: newId, jmeno, klient_id, funkce, mobil, email, enews
+            id: newId, jmeno, klient_id, funkce, mobil, email, enews,
+            created_by: activeUser,
+            created_at: nowStr,
+            updated_by: activeUser,
+            updated_at: nowStr,
+            last_change_details: 'Vytvoření nového pracovníka'
         });
+        logAuditEvent('VYTVOŘENÍ', 'Pracovníci', jmeno, `Vytvoření nového pracovníka: ${jmeno}`);
     }
 
     saveData('crm_workers', state.workers);
@@ -1296,6 +1432,9 @@ function saveWorker(e) {
 }
 
 function deleteWorker(workerId) {
+    const targetWorker = state.workers.find(w => w.id === workerId);
+    const targetName = targetWorker ? targetWorker.jmeno : 'Neznámý';
+
     if (confirm("Opravdu chcete smazat tohoto pracovníka? Události budou odpojeny.")) {
         state.workers = state.workers.filter(w => w.id !== workerId);
         
@@ -1309,6 +1448,7 @@ function deleteWorker(workerId) {
 
         saveData('crm_workers', state.workers);
         saveData('crm_events', state.events);
+        logAuditEvent('SMAZÁNÍ', 'Pracovníci', targetName, `Smazání pracovníka a odpojení jeho událostí`);
         renderWorkersTable();
     }
 }
@@ -1531,6 +1671,9 @@ function openEventModal(eventId = null, options = {}) {
         deleteBtn.classList.remove('hidden');
         
         const event = state.events.find(e => e.id === eventId);
+        // Render audit trail info
+        renderAuditTrail('event-audit-info', event);
+
         if (event) {
             document.getElementById('event-id').value = event.id;
             document.getElementById('event-nazev').value = event.nazev;
@@ -1629,6 +1772,11 @@ function openEventModal(eventId = null, options = {}) {
         form.dataset.origin = origin;
     }
 
+    // Hide audit info by default for new events
+    if (!eventId) {
+        renderAuditTrail('event-audit-info', null);
+    }
+
     showModal(modal);
 }
 
@@ -1651,18 +1799,44 @@ function saveEvent(e) {
     const user = state.users.find(u => u.id === uzivatel_id);
     const uzivatel = user ? user.jmeno : '';
 
+    const activeUser = state.currentUser ? state.currentUser.zkratka : 'SYSTEM';
+    const nowStr = formatDateToISO(new Date());
+
     if (id) {
         // Edit mode
         const index = state.events.findIndex(e => e.id === id);
         if (index !== -1) {
+            const old = state.events[index];
+            const changes = [];
+            if (old.nazev !== nazev) changes.push(`Název (${old.nazev} -> ${nazev})`);
+            if (old.typ !== typ) changes.push(`Typ (${old.typ} -> ${typ})`);
+            if (old.uzivatel_id !== uzivatel_id) changes.push(`Odpovědný (${old.uzivatel} -> ${uzivatel})`);
+            if (old.datum_plan !== datum_plan) changes.push(`Plánováno (${old.datum_plan} -> ${datum_plan})`);
+            if (old.datum_kon !== datum_kon) {
+                const oldK = old.datum_kon ? old.datum_kon : 'nesplněno';
+                const newK = datum_kon ? datum_kon : 'nesplněno';
+                changes.push(`Splněno (${oldK} -> ${newK})`);
+            }
+            if (old.poznámka !== poznámka) changes.push(`Poznámka (změna)`);
+
+            const changeText = changes.length > 0 ? `Změna: ${changes.join(', ')}` : 'Beze změny hodnot';
+
             // Keep original origin if it exists
             const existingOrigin = state.events[index].origin || 'direct';
+            const createdBy = state.events[index].created_by || 'SYSTEM';
+            const createdAt = state.events[index].created_at || state.events[index].datum_zal;
             
             state.events[index] = { 
                 ...state.events[index], 
                 nazev, typ, uzivatel_id, uzivatel, datum_plan, datum_kon, link_client_id, link_worker_id, poznámka,
-                origin: existingOrigin
+                origin: existingOrigin,
+                created_by: createdBy,
+                created_at: createdAt,
+                updated_by: activeUser,
+                updated_at: nowStr,
+                last_change_details: changeText
             };
+            logAuditEvent('ÚPRAVA', 'Události', nazev, changeText);
         }
     } else {
         // Create mode
@@ -1674,8 +1848,14 @@ function saveEvent(e) {
 
         state.events.push({
             id: newId, por_cislo, typ, datum_zal: formatDateToISO(new Date()), datum_plan, datum_kon, 
-            nazev, poznámka, uzivatel_id, uzivatel, link_client_id, link_worker_id, origin
+            nazev, poznámka, uzivatel_id, uzivatel, link_client_id, link_worker_id, origin,
+            created_by: activeUser,
+            created_at: nowStr,
+            updated_by: activeUser,
+            updated_at: nowStr,
+            last_change_details: `Vytvoření události (${typ})`
         });
+        logAuditEvent('VYTVOŘENÍ', 'Události', nazev, `Vytvoření nové události (${typ}): ${nazev}`);
     }
 
     saveData('crm_events', state.events);
@@ -1686,9 +1866,13 @@ function saveEvent(e) {
 
 function deleteEventAction() {
     const id = document.getElementById('event-id').value;
+    const targetEvent = state.events.find(e => e.id === id);
+    const targetName = targetEvent ? targetEvent.nazev : 'Neznámý';
+    
     if (id && confirm("Opravdu chcete smazat tuto událost?")) {
         state.events = state.events.filter(e => e.id !== id);
         saveData('crm_events', state.events);
+        logAuditEvent('SMAZÁNÍ', 'Události', targetName, `Smazání události: ${targetName}`);
         closeAllModals();
         renderCalendar();
         renderDashboard();
@@ -1776,6 +1960,23 @@ function setupFormsAndModals() {
         openEventModal(null, { workerId });
     });
 
+    // Bind Audit Log filters and actions
+    const searchAudit = document.getElementById('search-audit');
+    if (searchAudit) {
+        searchAudit.addEventListener('keyup', renderAuditLogsTable);
+    }
+
+    const btnClearAudit = document.getElementById('btn-clear-audit');
+    if (btnClearAudit) {
+        btnClearAudit.addEventListener('click', () => {
+            if (confirm("Opravdu chcete smazat celou historii změn? Tato akce je nevratná.")) {
+                state.audit_logs = [];
+                saveData('crm_audit_logs', state.audit_logs);
+                renderAuditLogsTable();
+            }
+        });
+    }
+
     // Bind dashboard stat cards navigation
     const eventsCard = document.getElementById('stat-card-events');
     if (eventsCard) {
@@ -1822,4 +2023,65 @@ function closeAllModals() {
     
     // Repopulate filter fields just in case data changed
     populateCalendarFilters();
+}
+
+
+// ==========================================================================
+// 12. AUDIT LOGGING SERVICE
+// ==========================================================================
+
+function logAuditEvent(actionType, entityType, entityName, details) {
+    const activeUser = state.currentUser ? state.currentUser.zkratka : 'SYSTEM';
+    const logEntry = {
+        timestamp: formatDateToISO(new Date()),
+        user: activeUser,
+        action: actionType, // 'VYTVOŘENÍ', 'ÚPRAVA', 'SMAZÁNÍ'
+        module: entityType, // 'Klienti', 'Pracovníci', 'Uživatelé', 'Události'
+        target: entityName,
+        details: details
+    };
+    
+    state.audit_logs.unshift(logEntry); // Add to the beginning of list
+    saveData('crm_audit_logs', state.audit_logs);
+}
+
+function renderAuditLogsTable() {
+    const tbody = document.querySelector('#table-audit tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    const searchVal = document.getElementById('search-audit').value.toLowerCase();
+    const filtered = state.audit_logs.filter(log => 
+        log.user.toLowerCase().includes(searchVal) ||
+        log.action.toLowerCase().includes(searchVal) ||
+        log.module.toLowerCase().includes(searchVal) ||
+        log.target.toLowerCase().includes(searchVal) ||
+        log.details.toLowerCase().includes(searchVal)
+    );
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">V historii změn nejsou žádné odpovídající záznamy.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(log => {
+        const dateFormatted = new Date(log.timestamp).toLocaleString('cs-CZ');
+        const tr = document.createElement('tr');
+        
+        let actionBadgeClass = 'badge-role'; // default grey
+        if (log.action === 'VYTVOŘENÍ') actionBadgeClass = 'badge-create';
+        if (log.action === 'ÚPRAVA') actionBadgeClass = 'badge-edit';
+        if (log.action === 'SMAZÁNÍ') actionBadgeClass = 'badge-delete';
+
+        tr.innerHTML = `
+            <td><code>${dateFormatted}</code></td>
+            <td><span class="event-tag">${log.user}</span></td>
+            <td><span class="${actionBadgeClass}">${log.action}</span></td>
+            <td><strong>${log.module}</strong></td>
+            <td><strong>${log.target}</strong></td>
+            <td><span style="font-size: 0.85rem; line-height: 1.3; display: block; max-width: 450px; overflow-wrap: break-word;">${log.details}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
