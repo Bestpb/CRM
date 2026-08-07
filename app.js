@@ -1661,6 +1661,10 @@ function openEventModal(eventId = null, options = {}) {
     // Populate Users dropdown
     const userSelect = document.getElementById('event-uzivatel-id');
     userSelect.innerHTML = '';
+    
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const isAdmin = (userRole === 'ADMIN');
+
     state.users.forEach(u => {
         const option = document.createElement('option');
         option.value = u.id;
@@ -1669,6 +1673,9 @@ function openEventModal(eventId = null, options = {}) {
     });
     // Default to current simulated user
     userSelect.value = state.currentUser.id;
+    
+    // Non-admins can only create events for themselves
+    userSelect.disabled = !isAdmin;
 
     // Populate Clients linking dropdown
     const clientSelect = document.getElementById('event-link-client');
@@ -1708,8 +1715,6 @@ function openEventModal(eventId = null, options = {}) {
     clientSelect.addEventListener('change', (e) => {
         populateLinkedWorkers(e.target.value);
     });
-
-    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
 
     if (eventId) {
         // Edit mode
