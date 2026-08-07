@@ -599,26 +599,24 @@ function renderMapMarkers() {
             </div>
         `;
 
-        // Custom pin icon – no external images needed
+        // Custom SVG pin icon – reliable across all browsers, no external images needed
         const initials = client.nazev.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+        const uid = 'g' + client.id;
         const customIcon = L.divIcon({
-            className: '',
-            html: `<div style="
-                background: linear-gradient(135deg, #4F46E5, #7C3AED);
-                color: white;
-                width: 36px;
-                height: 36px;
-                border-radius: 50% 50% 50% 0;
-                transform: rotate(-45deg);
-                border: 2px solid white;
-                box-shadow: 0 2px 8px rgba(79,70,229,0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            "><span style="transform: rotate(45deg); font-size: 11px; font-weight: 700; font-family: sans-serif;">${initials}</span></div>`,
-            iconSize: [36, 36],
-            iconAnchor: [18, 36],
-            popupAnchor: [0, -36]
+            className: 'custom-map-pin',
+            html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
+                <defs>
+                    <linearGradient id="${uid}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#4F46E5"/>
+                        <stop offset="100%" style="stop-color:#7C3AED"/>
+                    </linearGradient>
+                </defs>
+                <path d="M18 0 C8.059 0 0 8.059 0 18 C0 31.5 18 48 18 48 C18 48 36 31.5 36 18 C36 8.059 27.941 0 18 0Z" fill="url(#${uid})" stroke="white" stroke-width="1.5"/>
+                <text x="18" y="22" font-size="11" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" font-family="Arial,sans-serif">${initials}</text>
+            </svg>`,
+            iconSize: [36, 48],
+            iconAnchor: [18, 48],
+            popupAnchor: [0, -48]
         });
 
         const marker = L.marker([coords[0], coords[1]], { icon: customIcon }).addTo(state.map);
