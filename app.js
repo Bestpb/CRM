@@ -30,10 +30,10 @@ let state = {
 // Access Level Code definitions (KOD-PRISTUP)
 // We map each KOD-PRISTUP code to permitted tabs.
 const DEFAULT_PERMISSIONS = {
-    "ADMIN": { name: "Administrátor", dashboard: true, uzivatele: true, klienti: true, pracovnici: true, kalendar: true, opravneni: true, audit: true, smazani: true },
-    "OBCHODNIK": { name: "Obchodní zástupce", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false, smazani: false },
-    "ASISTENT": { name: "Asistent/ka", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false, smazani: false },
-    "HOST": { name: "Host (Čtenář)", dashboard: true, uzivatele: false, klienti: true, pracovnici: false, kalendar: true, opravneni: false, audit: false, smazani: false }
+    "ADMIN": { name: "Administrátor", dashboard: true, uzivatele: true, klienti: true, pracovnici: true, kalendar: true, opravneni: true, audit: true, smazani: true, dochazka: true },
+    "OBCHODNIK": { name: "Obchodní zástupce", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false, smazani: false, dochazka: true },
+    "ASISTENT": { name: "Asistent/ka", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false, smazani: false, dochazka: true },
+    "HOST": { name: "Host (Čtenář)", dashboard: true, uzivatele: false, klienti: true, pracovnici: false, kalendar: true, opravneni: false, audit: false, smazani: false, dochazka: true }
 };
 
 // Initial/Mock Data in Czech language for immediate demonstration
