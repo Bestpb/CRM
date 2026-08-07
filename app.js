@@ -530,7 +530,7 @@ function initLeafletMap() {
             return;
         }
 
-        state.map = L.map('map').setView([49.2, 17.5], 6);
+        state.map = L.map('map').setView([49.0, 18.5], 6);
         
         // OpenStreetMap Tile Layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -631,7 +631,7 @@ function renderMapMarkers() {
     });
 
     // Fixed view covering Czech Republic + Slovakia
-    state.map.setView([49.2, 17.5], 6);
+    state.map.setView([49.0, 18.5], 6);
 }
 
 // Global functions exposed to window so that Leaflet popup buttons can execute them
@@ -1432,6 +1432,14 @@ function openEventModal(eventId = null, options = {}) {
             document.getElementById('event-link-worker').value = event.link_worker_id;
             document.getElementById('event-poznamka').value = event.poznámka;
 
+            // Show complete button only for tasks in edit mode
+            const completeBtn = document.getElementById('btn-complete-task');
+            if (event.typ === 'úkol') {
+                completeBtn.classList.remove('hidden');
+            } else {
+                completeBtn.classList.add('hidden');
+            }
+
             // Render tracing / origin info
             banner.classList.remove('hidden');
             let originLabel = '';
@@ -1590,6 +1598,24 @@ function setupFormsAndModals() {
 
     // Bind delete event button inside modal
     document.getElementById('btn-delete-event').addEventListener('click', deleteEventAction);
+
+    // Bind complete task button (sets current time as completion date)
+    document.getElementById('btn-complete-task').addEventListener('click', () => {
+        const now = new Date();
+        document.getElementById('event-datum-kon').value = formatDateToISO(now);
+    });
+
+    // Dynamically show/hide 'Splnit úkol' button on type dropdown change
+    document.getElementById('event-typ').addEventListener('change', (e) => {
+        const id = document.getElementById('event-id').value;
+        const completeBtn = document.getElementById('btn-complete-task');
+        // Only show button if we are in Edit Mode (id exists) and type is 'úkol'
+        if (id && e.target.value === 'úkol') {
+            completeBtn.classList.remove('hidden');
+        } else {
+            completeBtn.classList.add('hidden');
+        }
+    });
 
     // Closers
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
