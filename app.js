@@ -478,11 +478,7 @@ function renderDashboard() {
     // 1. Stats Counter
     document.getElementById('stat-clients').textContent = state.clients.length;
     document.getElementById('stat-workers').textContent = state.workers.length;
-    document.getElementById('stat-events').textContent = state.events.filter(e => {
-        // Active event means end date has not passed or it's scheduled
-        const end = new Date(e.datum_kon);
-        return end >= new Date();
-    }).length;
+    document.getElementById('stat-events').textContent = state.events.filter(e => !e.datum_kon).length;
     document.getElementById('stat-users').textContent = state.users.length;
 
     // 2. Upcoming Events List
@@ -1357,7 +1353,12 @@ function renderCalendar() {
     const filterUser = document.getElementById('filter-event-user').value;
 
     const activeEvents = state.events.filter(e => {
-        if (filterType !== 'all' && e.typ !== filterType) return false;
+        if (filterType === 'active') {
+            if (e.datum_kon) return false;
+        } else if (filterType !== 'all' && e.typ !== filterType) {
+            return false;
+        }
+        
         if (filterUser !== 'all' && e.uzivatel_id !== filterUser) return false;
         return true;
     });
@@ -1774,6 +1775,40 @@ function setupFormsAndModals() {
         closeAllModals();
         openEventModal(null, { workerId });
     });
+
+    // Bind dashboard stat cards navigation
+    const eventsCard = document.getElementById('stat-card-events');
+    if (eventsCard) {
+        eventsCard.addEventListener('click', () => {
+            switchTab('kalendar');
+            const typeFilter = document.getElementById('filter-event-type');
+            if (typeFilter) {
+                typeFilter.value = 'active';
+                renderCalendar();
+            }
+        });
+    }
+
+    const clientsCard = document.getElementById('stat-card-clients');
+    if (clientsCard) {
+        clientsCard.addEventListener('click', () => {
+            switchTab('klienti');
+        });
+    }
+
+    const workersCard = document.getElementById('stat-card-workers');
+    if (workersCard) {
+        workersCard.addEventListener('click', () => {
+            switchTab('pracovnici');
+        });
+    }
+
+    const usersCard = document.getElementById('stat-card-users');
+    if (usersCard) {
+        usersCard.addEventListener('click', () => {
+            switchTab('uzivatele');
+        });
+    }
 }
 
 function showModal(modalEl) {
