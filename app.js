@@ -30,10 +30,10 @@ let state = {
 // Access Level Code definitions (KOD-PRISTUP)
 // We map each KOD-PRISTUP code to permitted tabs.
 const DEFAULT_PERMISSIONS = {
-    "ADMIN": { name: "Administrátor", dashboard: true, uzivatele: true, klienti: true, pracovnici: true, kalendar: true, opravneni: true, audit: true },
-    "OBCHODNIK": { name: "Obchodní zástupce", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false },
-    "ASISTENT": { name: "Asistent/ka", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false },
-    "HOST": { name: "Host (Čtenář)", dashboard: true, uzivatele: false, klienti: true, pracovnici: false, kalendar: true, opravneni: false, audit: false }
+    "ADMIN": { name: "Administrátor", dashboard: true, uzivatele: true, klienti: true, pracovnici: true, kalendar: true, opravneni: true, audit: true, smazani: true },
+    "OBCHODNIK": { name: "Obchodní zástupce", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false, smazani: false },
+    "ASISTENT": { name: "Asistent/ka", dashboard: true, uzivatele: false, klienti: true, pracovnici: true, kalendar: true, opravneni: false, audit: false, smazani: false },
+    "HOST": { name: "Host (Čtenář)", dashboard: true, uzivatele: false, klienti: true, pracovnici: false, kalendar: true, opravneni: false, audit: false, smazani: false }
 };
 
 // Initial/Mock Data in Czech language for immediate demonstration
@@ -447,6 +447,7 @@ function setupPermissionsTable() {
             <td class="text-center">${renderPermissionCheckbox(code, 'kalendar', perm.kalendar)}</td>
             <td class="text-center">${renderPermissionCheckbox(code, 'opravneni', perm.opravneni)}</td>
             <td class="text-center">${renderPermissionCheckbox(code, 'audit', perm.audit)}</td>
+            <td class="text-center">${renderPermissionCheckbox(code, 'smazani', perm.smazani)}</td>
         `;
         tableBody.appendChild(tr);
     });
@@ -463,13 +464,19 @@ function setupPermissionsTable() {
             
             // Refresh permissions checks for logged-in simulated user
             checkSectionAccess(window.location.hash.substring(1) || 'dashboard');
+            
+            // Re-render current view to hide/show delete buttons
+            const activeTab = window.location.hash.substring(1) || 'dashboard';
+            if (activeTab === 'uzivatele') renderUsersTable();
+            if (activeTab === 'klienti') renderClientsTable();
+            if (activeTab === 'pracovnici') renderWorkersTable();
         });
     });
 }
 
 function renderPermissionCheckbox(role, section, val) {
-    // Disable editing rights for HOST so we don't break simulation controls easily, and ADMIN must always access 'opravneni' and 'audit' to prevent lockouts
-    const isDisabled = (role === 'ADMIN' && (section === 'opravneni' || section === 'audit'));
+    // Disable editing rights for HOST so we don't break simulation controls easily, and ADMIN must always access 'opravneni', 'audit', and 'smazani' to prevent lockouts
+    const isDisabled = (role === 'ADMIN' && (section === 'opravneni' || section === 'audit' || section === 'smazani'));
     return `
         <input type="checkbox" class="perm-checkbox" data-role="${role}" data-section="${section}" 
                ${val ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
@@ -817,6 +824,9 @@ function renderUsersTable() {
         return;
     }
 
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const hasDeletePermission = state.permissions[userRole] ? state.permissions[userRole].smazani : false;
+
     filtered.forEach(u => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -832,7 +842,7 @@ function renderUsersTable() {
             <td class="text-center">${u.hod_nv} h</td>
             <td class="text-right">
                 <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}">Upravit</button>
-                <button class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}">Smazat</button>
+                ${hasDeletePermission ? `<button class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}">Smazat</button>` : ''}
             </td>
         `;
         tbody.appendChild(tr);
@@ -1027,6 +1037,9 @@ function renderClientsTable() {
         return;
     }
 
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const hasDeletePermission = state.permissions[userRole] ? state.permissions[userRole].smazani : false;
+
     filtered.forEach(c => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -1042,7 +1055,7 @@ function renderClientsTable() {
             <td class="text-right">
                 <button class="btn btn-primary btn-sm btn-map-client" data-id="${c.id}">🗺️ Mapa</button>
                 <button class="btn btn-secondary btn-sm btn-edit-client" data-id="${c.id}">Upravit</button>
-                <button class="btn btn-danger btn-sm btn-delete-client" data-id="${c.id}">Smazat</button>
+                ${hasDeletePermission ? `<button class="btn btn-danger btn-sm btn-delete-client" data-id="${c.id}">Smazat</button>` : ''}
             </td>
         `;
         tbody.appendChild(tr);
@@ -1295,6 +1308,9 @@ function renderWorkersTable() {
         return;
     }
 
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const hasDeletePermission = state.permissions[userRole] ? state.permissions[userRole].smazani : false;
+
     filtered.forEach(w => {
         const client = state.clients.find(c => c.id === w.klient_id);
         const tr = document.createElement('tr');
@@ -1308,7 +1324,7 @@ function renderWorkersTable() {
             <td class="text-center">${renderDisplayCheckbox(w.enews)}</td>
             <td class="text-right">
                 <button class="btn btn-secondary btn-sm btn-edit-worker" data-id="${w.id}">Upravit / Detail</button>
-                <button class="btn btn-danger btn-sm btn-delete-worker" data-id="${w.id}">Smazat</button>
+                ${hasDeletePermission ? `<button class="btn btn-danger btn-sm btn-delete-worker" data-id="${w.id}">Smazat</button>` : ''}
             </td>
         `;
         tbody.appendChild(tr);
@@ -1668,7 +1684,14 @@ function openEventModal(eventId = null, options = {}) {
     if (eventId) {
         // Edit mode
         title.textContent = 'Detail / Upravit Událost';
-        deleteBtn.classList.remove('hidden');
+        
+        const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+        const hasDeletePermission = state.permissions[userRole] ? state.permissions[userRole].smazani : false;
+        if (hasDeletePermission) {
+            deleteBtn.classList.remove('hidden');
+        } else {
+            deleteBtn.classList.add('hidden');
+        }
         
         const event = state.events.find(e => e.id === eventId);
         // Render audit trail info
