@@ -1680,22 +1680,41 @@ function openEventModal(eventId = null, options = {}) {
         clientSelect.appendChild(option);
     });
 
-    // Populate Workers linking dropdown
-    const workerSelect = document.getElementById('event-link-worker');
-    workerSelect.innerHTML = '<option value="">-- Nepropojovat s pracovníkem --</option>';
-    state.workers.forEach(w => {
-        const client = state.clients.find(c => c.id === w.klient_id);
-        const option = document.createElement('option');
-        option.value = w.id;
-        option.textContent = `${w.jmeno} (${client ? client.nazev : 'Bez firmy'})`;
-        workerSelect.appendChild(option);
+    // Helper to dynamically populate worker dropdown based on selected client
+    function populateLinkedWorkers(selectedClientId) {
+        const workerSelect = document.getElementById('event-link-worker');
+        const previousWorkerValue = workerSelect.value;
+        workerSelect.innerHTML = '<option value="">-- Nepropojovat s pracovníkem --</option>';
+        
+        const filteredWorkers = selectedClientId 
+            ? state.workers.filter(w => w.klient_id === selectedClientId)
+            : state.workers;
+
+        filteredWorkers.forEach(w => {
+            const client = state.clients.find(c => c.id === w.klient_id);
+            const option = document.createElement('option');
+            option.value = w.id;
+            option.textContent = `${w.jmeno} (${client ? client.nazev : 'Bez firmy'})`;
+            workerSelect.appendChild(option);
+        });
+
+        // Re-set previous value if it's still available in the list
+        if ([...workerSelect.options].some(opt => opt.value === previousWorkerValue)) {
+            workerSelect.value = previousWorkerValue;
+        }
+    }
+
+    // Bind change event to client selector to filter workers
+    clientSelect.addEventListener('change', (e) => {
+        populateLinkedWorkers(e.target.value);
     });
+
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
 
     if (eventId) {
         // Edit mode
         title.textContent = 'Detail / Upravit Událost';
         
-        const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
         const hasDeletePermission = state.permissions[userRole] ? state.permissions[userRole].smazani : false;
         if (hasDeletePermission) {
             deleteBtn.classList.remove('hidden');
@@ -1715,12 +1734,33 @@ function openEventModal(eventId = null, options = {}) {
             document.getElementById('event-datum-plan').value = event.datum_plan;
             document.getElementById('event-datum-kon').value = event.datum_kon;
             document.getElementById('event-link-client').value = event.link_client_id;
+            
+            // Re-populate workers dropdown based on current client
+            populateLinkedWorkers(event.link_client_id);
+            
             document.getElementById('event-link-worker').value = event.link_worker_id;
             document.getElementById('event-poznamka').value = event.poznámka;
 
-            // Show complete button only if event has no completion date yet
+            // Check editing permission
+            // Admin can edit everything. 
+            // Regular user can only edit events they created (created_by === activeUser initials)
+            const activeUserInitials = state.currentUser ? state.currentUser.zkratka : 'SYSTEM';
+            const isCreator = (event.created_by === activeUserInitials);
+            const canEdit = (userRole === 'ADMIN') || isCreator;
+
+            // Enable/disable form inputs based on editing rights
+            const formInputs = form.querySelectorAll('input, select, textarea');
+            formInputs.forEach(input => {
+                input.disabled = !canEdit;
+            });
+
+            // Toggle save and complete buttons
+            const saveBtn = form.querySelector('button[type="submit"]');
+            if (saveBtn) saveBtn.style.display = canEdit ? 'inline-block' : 'none';
+
+            // Show complete button only if event has no completion date yet AND can edit
             const completeBtn = document.getElementById('btn-complete-event');
-            if (!event.datum_kon) {
+            if (!event.datum_kon && canEdit) {
                 completeBtn.classList.remove('hidden');
                 if (event.typ === 'úkol') {
                     completeBtn.textContent = '✓ Splnit úkol';
@@ -1731,6 +1771,11 @@ function openEventModal(eventId = null, options = {}) {
                 }
             } else {
                 completeBtn.classList.add('hidden');
+            }
+            
+            // Adjust title if in read-only mode
+            if (!canEdit) {
+                title.textContent = 'Detail Události (Pouze pro čtení)';
             }
 
             // Render tracing / origin info
@@ -1762,7 +1807,8 @@ function openEventModal(eventId = null, options = {}) {
             const client = state.clients.find(c => c.id === options.clientId);
             banner.innerHTML = `📝 Událost bude přiřazena klientovi: <strong>${client ? client.nazev : ''}</strong>`;
             
-            // Auto link first worker of client if available
+            // Populate and link worker
+            populateLinkedWorkers(options.clientId);
             const workers = state.workers.filter(w => w.klient_id === options.clientId);
             if (workers.length > 0) {
                 document.getElementById('event-link-worker').value = workers[0].id;
@@ -1778,7 +1824,15 @@ function openEventModal(eventId = null, options = {}) {
             
             if (worker) {
                 document.getElementById('event-link-client').value = worker.klient_id;
+                populateLinkedWorkers(worker.klient_id);
+                document.getElementById('event-link-worker').value = worker.id;
             }
+        }
+
+        // If no specific client or worker is pre-selected, initialize the default dropdowns (empty client)
+        if (!options.clientId && !options.workerId) {
+            document.getElementById('event-link-client').value = '';
+            populateLinkedWorkers('');
         }
 
         // Set default dates
@@ -1803,6 +1857,14 @@ function openEventModal(eventId = null, options = {}) {
         
         // Save origin context on form dataset
         form.dataset.origin = origin;
+
+        // Ensure inputs are enabled for new creation
+        const formInputs = form.querySelectorAll('input, select, textarea');
+        formInputs.forEach(input => {
+            input.disabled = false;
+        });
+        const saveBtn = form.querySelector('button[type="submit"]');
+        if (saveBtn) saveBtn.style.display = 'inline-block';
     }
 
     // Hide audit info by default for new events
