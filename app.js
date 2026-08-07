@@ -2310,7 +2310,7 @@ function recordQuickArrival() {
     }
 
     const now = new Date();
-    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const timeStr = `${padNum(now.getHours())}:${padNum(now.getMinutes())}`;
     const initials = state.currentUser.zkratka;
 
     const newEntry = {
@@ -2347,7 +2347,7 @@ function recordQuickDeparture() {
     }
 
     const now = new Date();
-    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const timeStr = `${padNum(now.getHours())}:${padNum(now.getMinutes())}`;
     const initials = state.currentUser.zkratka;
 
     existing.odchod = timeStr;
@@ -2582,6 +2582,6 @@ function handleAttendanceCreditsDiff(userId, oldVal, newVal) {
     renderUsersTable();
 }
 
-function pad(num) {
+function padNum(num) {
     return String(num).padStart(2, '0');
 }
