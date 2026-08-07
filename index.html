@@ -647,8 +647,8 @@
                         <input type="datetime-local" id="event-datum-plan" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label for="event-datum-kon" class="required">Datum konce / splnění</label>
-                        <input type="datetime-local" id="event-datum-kon" class="form-control" required>
+                        <label for="event-datum-kon">Datum splnění / konce</label>
+                        <input type="datetime-local" id="event-datum-kon" class="form-control">
                     </div>
 
                     <!-- Entity Linking Fields -->
@@ -681,7 +681,7 @@
             <div class="modal-footer">
                 <div class="footer-left">
                     <button type="button" class="btn btn-danger hidden" id="btn-delete-event">Smazat událost</button>
-                    <button type="button" class="btn btn-success hidden" id="btn-complete-task" style="background-color: var(--success); color: white;">✓ Splnit úkol</button>
+                    <button type="button" class="btn hidden" id="btn-complete-event" style="color: white;">✓ Dokončit</button>
                 </div>
                 <button type="button" class="btn btn-secondary btn-close-modal">Zrušit</button>
                 <button type="submit" class="btn btn-primary">Uložit</button>

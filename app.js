@@ -108,7 +108,7 @@ INITIAL_EVENTS.push({
     typ: "úkol",
     datum_zal: formatDateStr(new Date(), 14, 0),
     datum_plan: formatDateStr(event3Date, 9, 0),
-    datum_kon: formatDateStr(event3Date, 17, 0),
+    datum_kon: "", // Not completed yet
     nazev: "Odeslat cenovou nabídku",
     poznámka: "Cenová nabídka pro IT vývoj portálu.",
     uzivatel_id: "2", // Jana Malá
@@ -126,7 +126,7 @@ INITIAL_EVENTS.push({
     typ: "úkol",
     datum_zal: formatDateStr(new Date(), 8, 0),
     datum_plan: formatDateStr(event4Date, 10, 0),
-    datum_kon: formatDateStr(event4Date, 11, 30),
+    datum_kon: "", // Not completed yet
     nazev: "Interní porada a plánování",
     poznámka: "Pravidelný interní sync celého týmu nad projekty.",
     uzivatel_id: "1", // Daniel Havlíček
@@ -209,6 +209,45 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Map needs to load after dashboard view is visible, so initialize it next
     setTimeout(initLeafletMap, 150);
+
+    // Auto-refresh interval (every 30 seconds)
+    setInterval(() => {
+        console.log('[CRM] Automatická aktualizace dat na pozadí...');
+        
+        // 1. Reload data from storage
+        state.users = JSON.parse(localStorage.getItem('crm_users')) || state.users;
+        state.clients = JSON.parse(localStorage.getItem('crm_clients')) || state.clients;
+        state.workers = JSON.parse(localStorage.getItem('crm_workers')) || state.workers;
+        state.events = JSON.parse(localStorage.getItem('crm_events')) || state.events;
+        
+        // 2. Refresh active views without closing opened modals
+        // Only refresh map markers if map exists
+        if (state.map) {
+            // Save open popup state if any
+            const openPopup = state.map._popup;
+            const wasOpen = openPopup && openPopup.isOpen();
+            
+            renderMapMarkers();
+            
+            // If popup was open, keep it open if possible
+            if (wasOpen && openPopup._source) {
+                const markerLatLng = openPopup._source.getLatLng();
+                // Find matching marker and re-open it
+                const match = state.mapMarkers.find(m => m.getLatLng().equals(markerLatLng));
+                if (match) match.openPopup();
+            }
+        }
+        
+        // Refresh dashboard statistics and events list
+        renderDashboard();
+        
+        // Refresh tables if currently active
+        const activeTab = document.querySelector('.nav-item.active')?.getAttribute('data-tab');
+        if (activeTab === 'uzivatele') renderUsersTable();
+        if (activeTab === 'klienti') renderClientsTable();
+        if (activeTab === 'pracovnici') renderWorkersTable();
+        if (activeTab === 'kalendar') renderCalendar();
+    }, 30000); // 30000 ms = 30 seconds
 });
 
 
@@ -585,6 +624,51 @@ function renderMapMarkers() {
             `;
         }
 
+        // Find incomplete tasks and meetings for this client
+        const clientEvents = state.events.filter(e => e.link_client_id === client.id);
+        const incompleteTasks = clientEvents.filter(e => e.typ === 'úkol' && !e.datum_kon);
+        const incompleteMeetings = clientEvents.filter(e => e.typ === 'schůzka' && !e.datum_kon);
+        
+        let eventsHTML = '';
+        let hasIncompleteTask = incompleteTasks.length > 0;
+        let hasIncompleteMeeting = incompleteMeetings.length > 0;
+        
+        if (hasIncompleteTask || hasIncompleteMeeting) {
+            eventsHTML += `<div class="map-popup-workers" style="border-top: 1px dashed var(--border-color); margin-top: 6px; padding-top: 6px;">`;
+            
+            if (hasIncompleteTask) {
+                eventsHTML += `
+                    <strong style="color: var(--danger); display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                        ⚠️ Nesplněné úkoly (${incompleteTasks.length}):
+                    </strong>
+                    ${incompleteTasks.map(t => `
+                        <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;" title="${t.nazev}">${t.nazev}</span>
+                            <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="appDirectViewEvent('${t.id}')">Zobrazit úkol</button>
+                        </div>
+                    `).join('')}
+                `;
+            }
+            
+            if (hasIncompleteMeeting) {
+                // If we also had tasks, add small spacing
+                const topMargin = hasIncompleteTask ? 'margin-top: 8px;' : '';
+                eventsHTML += `
+                    <strong style="color: #f97316; display: flex; align-items: center; gap: 4px; ${topMargin} margin-bottom: 2px;">
+                        📅 Nedokončené schůzky (${incompleteMeetings.length}):
+                    </strong>
+                    ${incompleteMeetings.map(m => `
+                        <div style="margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;" title="${m.nazev}">${m.nazev}</span>
+                            <button class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="appDirectViewEvent('${m.id}')">Zobrazit schůzku</button>
+                        </div>
+                    `).join('')}
+                `;
+            }
+            
+            eventsHTML += `</div>`;
+        }
+
         // Popup content
         const popupContent = `
             <div class="map-popup">
@@ -592,6 +676,7 @@ function renderMapMarkers() {
                 <div class="map-popup-text">${client.ulice}, ${client.mesto}</div>
                 <div class="map-popup-text">Výroba: ${client.typ_vyroby}</div>
                 ${workersHTML}
+                ${eventsHTML}
                 <div style="margin-top: 10px; display: flex; gap: 6px;">
                     <button class="btn btn-primary btn-sm" onclick="appDirectLinkEvent('${client.id}', 'client')">+ Nová schůzka</button>
                     <button class="btn btn-secondary btn-sm" onclick="appDirectViewClient('${client.id}')">Zobrazit detail</button>
@@ -599,19 +684,34 @@ function renderMapMarkers() {
             </div>
         `;
 
-        // Custom SVG pin icon – reliable across all browsers, no external images needed
+        // Custom SVG pin icon – Red if has active tasks, Orange if has active meetings, otherwise Indigo/Purple gradient
         const initials = client.nazev.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
         const uid = 'g' + client.id;
+        
+        let stopColorStart = '#4F46E5';
+        let stopColorEnd = '#7C3AED';
+        let shadowColor = 'rgba(79,70,229,0.5)';
+        
+        if (hasIncompleteTask) {
+            stopColorStart = '#EF4444'; // Red
+            stopColorEnd = '#B91C1C';
+            shadowColor = 'rgba(239,68,68,0.6)';
+        } else if (hasIncompleteMeeting) {
+            stopColorStart = '#F97316'; // Orange
+            stopColorEnd = '#C2410C';
+            shadowColor = 'rgba(249,115,22,0.6)';
+        }
+
         const customIcon = L.divIcon({
             className: 'custom-map-pin',
             html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
                 <defs>
                     <linearGradient id="${uid}" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#4F46E5"/>
-                        <stop offset="100%" style="stop-color:#7C3AED"/>
+                        <stop offset="0%" style="stop-color:${stopColorStart}"/>
+                        <stop offset="100%" style="stop-color:${stopColorEnd}"/>
                     </linearGradient>
                 </defs>
-                <path d="M18 0 C8.059 0 0 8.059 0 18 C0 31.5 18 48 18 48 C18 48 36 31.5 36 18 C36 8.059 27.941 0 18 0Z" fill="url(#${uid})" stroke="white" stroke-width="1.5"/>
+                <path d="M18 0 C8.059 0 0 8.059 0 18 C0 31.5 18 48 18 48 C18 48 36 31.5 36 18 C36 8.059 27.941 0 18 0Z" fill="url(#${uid})" stroke="white" stroke-width="1.5" style="filter: drop-shadow(0px 2px 4px ${shadowColor});"/>
                 <text x="18" y="22" font-size="11" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle" font-family="Arial,sans-serif">${initials}</text>
             </svg>`,
             iconSize: [36, 48],
@@ -646,6 +746,14 @@ window.appDirectLinkEvent = function(entityId, type) {
 window.appDirectViewClient = function(clientId) {
     switchTab('klienti');
     openClientModal(clientId);
+};
+
+window.appDirectViewEvent = function(eventId) {
+    // Closes map popup, keeps user on dashboard, opens event modal
+    if (state.map) {
+        state.map.closePopup();
+    }
+    openEventModal(eventId);
 };
 
 window.showClientOnMap = function(clientId) {
@@ -1379,6 +1487,7 @@ function openEventModal(eventId = null, options = {}) {
 
     form.reset();
     deleteBtn.classList.add('hidden');
+    document.getElementById('btn-complete-event').classList.add('hidden');
     banner.classList.add('hidden');
     banner.innerHTML = '';
 
@@ -1432,10 +1541,17 @@ function openEventModal(eventId = null, options = {}) {
             document.getElementById('event-link-worker').value = event.link_worker_id;
             document.getElementById('event-poznamka').value = event.poznámka;
 
-            // Show complete button only for tasks in edit mode
-            const completeBtn = document.getElementById('btn-complete-task');
-            if (event.typ === 'úkol') {
+            // Show complete button only if event has no completion date yet
+            const completeBtn = document.getElementById('btn-complete-event');
+            if (!event.datum_kon) {
                 completeBtn.classList.remove('hidden');
+                if (event.typ === 'úkol') {
+                    completeBtn.textContent = '✓ Splnit úkol';
+                    completeBtn.style.backgroundColor = 'var(--success)';
+                } else {
+                    completeBtn.textContent = '✓ Dokončit schůzku';
+                    completeBtn.style.backgroundColor = '#f97316'; // Orange
+                }
             } else {
                 completeBtn.classList.add('hidden');
             }
@@ -1503,7 +1619,15 @@ function openEventModal(eventId = null, options = {}) {
         defaultEnd.setHours(defaultStart.getHours() + 1);
 
         document.getElementById('event-datum-plan').value = formatDateToISO(defaultStart);
-        document.getElementById('event-datum-kon').value = formatDateToISO(defaultEnd);
+        
+        // For new events: default end date only if it is "schůzka" (type select defaults to schůzka). 
+        // Tasks start with blank completion date.
+        const eventType = document.getElementById('event-typ').value;
+        if (eventType === 'schůzka') {
+            document.getElementById('event-datum-kon').value = formatDateToISO(defaultEnd);
+        } else {
+            document.getElementById('event-datum-kon').value = '';
+        }
         
         // Save origin context on form dataset
         form.dataset.origin = origin;
@@ -1599,19 +1723,28 @@ function setupFormsAndModals() {
     // Bind delete event button inside modal
     document.getElementById('btn-delete-event').addEventListener('click', deleteEventAction);
 
-    // Bind complete task button (sets current time as completion date)
-    document.getElementById('btn-complete-task').addEventListener('click', () => {
+    // Bind complete event button (sets current time as completion date)
+    document.getElementById('btn-complete-event').addEventListener('click', () => {
         const now = new Date();
         document.getElementById('event-datum-kon').value = formatDateToISO(now);
     });
 
-    // Dynamically show/hide 'Splnit úkol' button on type dropdown change
+    // Dynamically show/hide & style 'Dokončit' button on type dropdown change
     document.getElementById('event-typ').addEventListener('change', (e) => {
         const id = document.getElementById('event-id').value;
-        const completeBtn = document.getElementById('btn-complete-task');
-        // Only show button if we are in Edit Mode (id exists) and type is 'úkol'
-        if (id && e.target.value === 'úkol') {
+        const completeBtn = document.getElementById('btn-complete-event');
+        const datumKon = document.getElementById('event-datum-kon').value;
+        
+        // Only show button if we are in Edit Mode (id exists) and there's no completion date yet
+        if (id && !datumKon) {
             completeBtn.classList.remove('hidden');
+            if (e.target.value === 'úkol') {
+                completeBtn.textContent = '✓ Splnit úkol';
+                completeBtn.style.backgroundColor = 'var(--success)';
+            } else {
+                completeBtn.textContent = '✓ Dokončit schůzku';
+                completeBtn.style.backgroundColor = '#f97316';
+            }
         } else {
             completeBtn.classList.add('hidden');
         }
