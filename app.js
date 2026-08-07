@@ -572,7 +572,7 @@ function renderMapMarkers() {
         
         const coords = client.souradnice.split(',').map(c => parseFloat(c.trim()));
         if (coords.length !== 2 || isNaN(coords[0]) || isNaN(coords[1])) return;
-        
+
         // Find workers for this client
         const clientWorkers = state.workers.filter(w => w.klient_id === client.id);
         let workersHTML = '';
@@ -585,7 +585,7 @@ function renderMapMarkers() {
             `;
         }
 
-        // Custom HTML popup content
+        // Popup content
         const popupContent = `
             <div class="map-popup">
                 <div class="map-popup-title">${client.nazev}</div>
@@ -598,9 +598,36 @@ function renderMapMarkers() {
                 </div>
             </div>
         `;
-        
-        const marker = L.marker([coords[0], coords[1]]).addTo(state.map);
+
+        // Custom pin icon – no external images needed
+        const initials = client.nazev.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+        const customIcon = L.divIcon({
+            className: '',
+            html: `<div style="
+                background: linear-gradient(135deg, #4F46E5, #7C3AED);
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 50% 50% 50% 0;
+                transform: rotate(-45deg);
+                border: 2px solid white;
+                box-shadow: 0 2px 8px rgba(79,70,229,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            "><span style="transform: rotate(45deg); font-size: 11px; font-weight: 700; font-family: sans-serif;">${initials}</span></div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 36],
+            popupAnchor: [0, -36]
+        });
+
+        const marker = L.marker([coords[0], coords[1]], { icon: customIcon }).addTo(state.map);
         marker.bindPopup(popupContent);
+        marker.bindTooltip(`<strong>${client.nazev}</strong>`, {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -38]
+        });
         
         state.mapMarkers.push(marker);
     });
