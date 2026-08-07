@@ -468,8 +468,8 @@ function setupPermissionsTable() {
 }
 
 function renderPermissionCheckbox(role, section, val) {
-    // Disable editing rights for HOST so we don't break simulation controls easily, and ADMIN must always access 'opravneni' to prevent lockouts
-    const isDisabled = (role === 'ADMIN' && section === 'opravneni');
+    // Disable editing rights for HOST so we don't break simulation controls easily, and ADMIN must always access 'opravneni' and 'audit' to prevent lockouts
+    const isDisabled = (role === 'ADMIN' && (section === 'opravneni' || section === 'audit'));
     return `
         <input type="checkbox" class="perm-checkbox" data-role="${role}" data-section="${section}" 
                ${val ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
