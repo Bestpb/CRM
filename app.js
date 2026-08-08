@@ -2470,7 +2470,17 @@ function renderAttendance() {
             if (att.typ === 'práce') {
                 totalWorkHours += hoursDiff;
             } else if (att.typ === 'dovolená') {
-                totalVacDays += 1;
+                // Calculate actual business days in the range to display in monthly stats sum
+                const start = new Date(att.datum);
+                const end = att.datum_do ? new Date(att.datum_do) : start;
+                let daysCount = 0;
+                let current = new Date(start);
+                while (current <= end) {
+                    const day = current.getDay();
+                    if (day !== 0 && day !== 6) daysCount++;
+                    current.setDate(current.getDate() + 1);
+                }
+                totalVacDays += daysCount;
             } else if (att.typ === 'náhradní volno') {
                 totalNvHours += hoursDiff;
             } else if (att.typ === 'lékař') {
