@@ -2061,6 +2061,7 @@ function saveEvent(e) {
     closeAllModals();
     renderCalendar();
     renderDashboard();
+    renderMapMarkers();
 }
 
 function deleteEventAction() {
@@ -2075,6 +2076,7 @@ function deleteEventAction() {
         closeAllModals();
         renderCalendar();
         renderDashboard();
+        renderMapMarkers();
     }
 }
 
