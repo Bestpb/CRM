@@ -352,6 +352,13 @@ function switchTab(tabName) {
     } else if (tabName === 'audit') {
         renderAuditLogsTable();
     } else if (tabName === 'dochazka') {
+        // Enforce setting filters to current month & year when switching to Docházka
+        const monthSelect = document.getElementById('filter-attendance-month');
+        const yearSelect = document.getElementById('filter-attendance-year');
+        const today = new Date();
+        if (monthSelect) monthSelect.value = String(today.getMonth() + 1);
+        if (yearSelect) yearSelect.value = String(today.getFullYear());
+
         initAttendanceFilters();
         renderAttendance();
     }
@@ -2376,14 +2383,17 @@ function initAttendanceFilters() {
         userSelect.disabled = true;
     }
 
-    // Set default month & year filter to today's date
+    // Set default month & year filter to today's date if not already selected
     const monthSelect = document.getElementById('filter-attendance-month');
     const yearSelect = document.getElementById('filter-attendance-year');
     const today = new Date();
     
-    // Always set filters to today's month & year upon entering the tab
-    monthSelect.value = String(today.getMonth() + 1);
-    yearSelect.value = String(today.getFullYear());
+    if (!monthSelect.value) {
+        monthSelect.value = String(today.getMonth() + 1);
+    }
+    if (!yearSelect.value) {
+        yearSelect.value = String(today.getFullYear());
+    }
 }
 
 function renderAttendance() {
@@ -2485,6 +2495,12 @@ function renderAttendance() {
     document.getElementById('att-sum-vacation').textContent = `${totalVacDays} dnů`;
     document.getElementById('att-sum-nv').textContent = `${totalNvHours.toFixed(1)} h`;
     document.getElementById('att-sum-doctor').textContent = `${totalDoctorHours.toFixed(1)} h`;
+
+    // Populate remaining limits from user object
+    if (user) {
+        document.getElementById('att-rem-vacation').textContent = user.dny_dovolena || 0;
+        document.getElementById('att-rem-nv').textContent = user.hod_nv || 0;
+    }
 }
 
 function recordQuickArrival() {
