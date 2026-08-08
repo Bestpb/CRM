@@ -2381,13 +2381,9 @@ function initAttendanceFilters() {
     const yearSelect = document.getElementById('filter-attendance-year');
     const today = new Date();
     
-    // Always enforce today's month/year on initialization if they are empty or default is selected
-    if (!monthSelect.value || monthSelect.selectedIndex === -1) {
-        monthSelect.value = today.getMonth() + 1;
-    }
-    if (!yearSelect.value || yearSelect.selectedIndex === -1) {
-        yearSelect.value = today.getFullYear();
-    }
+    // Always set filters to today's month & year upon entering the tab
+    monthSelect.value = String(today.getMonth() + 1);
+    yearSelect.value = String(today.getFullYear());
 }
 
 function renderAttendance() {
