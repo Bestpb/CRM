@@ -2376,14 +2376,16 @@ function initAttendanceFilters() {
         userSelect.disabled = true;
     }
 
-    // Set default month & year filter to today's date if not set
+    // Set default month & year filter to today's date
     const monthSelect = document.getElementById('filter-attendance-month');
     const yearSelect = document.getElementById('filter-attendance-year');
     const today = new Date();
-    if (!monthSelect.value) {
+    
+    // Always enforce today's month/year on initialization if they are empty or default is selected
+    if (!monthSelect.value || monthSelect.selectedIndex === -1) {
         monthSelect.value = today.getMonth() + 1;
     }
-    if (!yearSelect.value) {
+    if (!yearSelect.value || yearSelect.selectedIndex === -1) {
         yearSelect.value = today.getFullYear();
     }
 }
