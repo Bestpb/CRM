@@ -2500,12 +2500,44 @@ function renderAttendance() {
             if (att.typ === 'lékař') typeBadgeClass = 'badge-role';
             if (att.typ === 'náhradní volno') typeBadgeClass = 'badge-create';
 
+            // Format Date Column to show range if applicable
+            let dateColHTML = `<code>${new Date(att.datum).toLocaleDateString('cs-CZ')}</code>`;
+            if (att.datum_do && att.datum_do !== att.datum) {
+                dateColHTML = `<code style="font-size:0.82rem;">${new Date(att.datum).toLocaleDateString('cs-CZ')} - ${new Date(att.datum_do).toLocaleDateString('cs-CZ')}</code>`;
+            }
+
+            // Adjust hours/days separate column logic
+            let hoursVal = '--';
+            let daysVal = '--';
+
+            if (att.typ === 'práce' || att.typ === 'lékař' || att.typ === 'náhradní volno') {
+                hoursVal = hoursDiff > 0 ? hoursDiff.toFixed(1) : '--';
+            }
+
+            if (att.typ === 'dovolená' || att.typ === 'nemoc') {
+                const start = new Date(att.datum);
+                const end = att.datum_do ? new Date(att.datum_do) : start;
+                let daysCount = 0;
+                let current = new Date(start);
+                while (current <= end) {
+                    if (att.typ === 'dovolená') {
+                        const day = current.getDay();
+                        if (day !== 0 && day !== 6) daysCount++;
+                    } else {
+                        daysCount++;
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+                daysVal = daysCount;
+            }
+
             tr.innerHTML = `
-                <td><code>${new Date(att.datum).toLocaleDateString('cs-CZ')}</code></td>
+                <td>${dateColHTML}</td>
                 <td><span class="${typeBadgeClass}">${att.typ.toUpperCase()}</span></td>
                 <td>${att.prichod || '--'}</td>
                 <td>${att.odchod || '--'}</td>
-                <td><strong>${hoursDiffStr}</strong></td>
+                <td class="text-center" style="font-weight: bold;">${hoursVal}</td>
+                <td class="text-center" style="font-weight: bold; color: var(--primary);">${daysVal}</td>
                 <td><span style="font-size: 0.82rem; color: var(--text-secondary);">${att.poznamka || '--'}</span></td>
                 <td class="text-right">
                     ${canEdit ? `<button class="btn btn-secondary btn-sm btn-edit-att" data-id="${att.id}">Upravit</button>` : '<span class="text-muted" style="font-size:0.8rem;">Uzamčeno</span>'}
