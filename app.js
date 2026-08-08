@@ -405,6 +405,25 @@ function renderActiveUserBadge() {
         const roleConfig = state.permissions[state.currentUser.kod_pristup];
         roleEl.textContent = roleConfig ? roleConfig.name : state.currentUser.kod_pristup;
     }
+    
+    // Refresh all sidebar items visibility immediately
+    updateSidebarNavigationAccess();
+}
+
+function updateSidebarNavigationAccess() {
+    const userRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
+    const rolePermissions = state.permissions[userRole];
+    if (!rolePermissions) return;
+
+    // Check visibility for all available tabs
+    const tabs = ['dashboard', 'uzivatele', 'klienti', 'pracovnici', 'kalendar', 'opravneni', 'audit', 'dochazka'];
+    tabs.forEach(tab => {
+        const allowed = rolePermissions[tab] || false;
+        const navEl = document.getElementById(`nav-${tab}`);
+        if (navEl) {
+            navEl.style.display = allowed ? 'flex' : 'none';
+        }
+    });
 }
 
 function checkSectionAccess(tabName) {
