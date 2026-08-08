@@ -159,7 +159,20 @@ function initData() {
     state.clients = JSON.parse(localStorage.getItem('crm_clients'));
     state.workers = JSON.parse(localStorage.getItem('crm_workers'));
     state.events = JSON.parse(localStorage.getItem('crm_events'));
-    state.permissions = JSON.parse(localStorage.getItem('crm_permissions'));
+    
+    // Migration: If permissions are missing dochazka property or need to be defaulted, re-write them
+    let savedPerms = null;
+    try {
+        savedPerms = JSON.parse(localStorage.getItem('crm_permissions'));
+    } catch(e) {}
+    
+    if (!savedPerms || !savedPerms.ADMIN || typeof savedPerms.ADMIN.dochazka === 'undefined') {
+        localStorage.setItem('crm_permissions', JSON.stringify(DEFAULT_PERMISSIONS));
+        state.permissions = DEFAULT_PERMISSIONS;
+    } else {
+        state.permissions = savedPerms;
+    }
+
     state.audit_logs = JSON.parse(localStorage.getItem('crm_audit_logs')) || [];
     state.attendance = JSON.parse(localStorage.getItem('crm_attendance')) || [];
     state.currentTheme = localStorage.getItem('crm_theme') || 'light';
