@@ -166,7 +166,14 @@ function initData() {
         savedPerms = JSON.parse(localStorage.getItem('crm_permissions'));
     } catch(e) {}
     
-    if (!savedPerms || !savedPerms.ADMIN || typeof savedPerms.ADMIN.dochazka === 'undefined') {
+    // Check if the stored permissions are outdated (do not have 'dochazka' or 'smazani' fields populated correctly)
+    const isOutdated = !savedPerms || !savedPerms.ADMIN || 
+                       typeof savedPerms.ADMIN.dochazka === 'undefined' || 
+                       typeof savedPerms.ADMIN.smazani === 'undefined' ||
+                       !savedPerms.ADMIN.smazani || 
+                       !savedPerms.ADMIN.dochazka;
+
+    if (isOutdated) {
         localStorage.setItem('crm_permissions', JSON.stringify(DEFAULT_PERMISSIONS));
         state.permissions = DEFAULT_PERMISSIONS;
     } else {
