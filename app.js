@@ -797,8 +797,10 @@ function renderMapMarkers() {
         state.mapMarkers.push(marker);
     });
 
-    // Fixed view covering Czech Republic + Slovakia
-    state.map.setView([49.0, 18.5], 6);
+    // Set country view only on first load, or when map has no active view
+    if (state.map && state.mapMarkers.length === 0) {
+        state.map.setView([49.0, 18.5], 6);
+    }
 }
 
 // Global functions exposed to window so that Leaflet popup buttons can execute them
