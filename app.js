@@ -1128,10 +1128,29 @@ function openClientModal(clientId = null) {
             } else {
                 linkedInfo.innerHTML = `Žádné propojené události. <a href="#" onclick="event.preventDefault(); closeAllModals(); openEventModal(null, {clientId: '${clientId}'});" style="color: var(--primary); font-weight:600;">Vytvořit událost</a>`;
             }
+
+            // Populate linked workers list
+            const linkedWorkers = state.workers.filter(w => w.klient_id === clientId);
+            const workersContainer = document.getElementById('client-linked-workers-list');
+            if (linkedWorkers.length > 0) {
+                workersContainer.innerHTML = linkedWorkers.map(w => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.02); padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                        <div>
+                            <strong>${w.jmeno}</strong> <span class="text-muted" style="font-size:0.8rem; margin-left: 8px;">(${w.funkce})</span>
+                        </div>
+                        <div style="font-size: 0.85rem;">
+                            📞 ${w.mobil} | ✉️ <a href="mailto:${w.email}" style="color: var(--primary);">${w.email}</a>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                workersContainer.innerHTML = `<span class="text-muted" style="font-size:0.85rem; font-style:italic;">K tomuto klientovi nejsou přiřazeni žádní pracovníci.</span>`;
+            }
         }
     } else {
         title.textContent = 'Nový Klient';
         document.getElementById('client-id').value = '';
+        document.getElementById('client-linked-workers-list').innerHTML = `<span class="text-muted" style="font-size:0.85rem; font-style:italic;">U nového klienta nelze zobrazit pracovníky před uložením.</span>`;
     }
 
     showModal(modal);
