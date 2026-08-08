@@ -2195,21 +2195,75 @@ function setupFormsAndModals() {
     document.getElementById('form-attendance').addEventListener('submit', saveAttendance);
     document.getElementById('btn-delete-attendance').addEventListener('click', deleteAttendance);
 
-    // Dynamically toggle times in attendance modal based on type selected
-    document.getElementById('attendance-type').addEventListener('change', (e) => {
+    // Dynamically toggle times in attendance modal based on type selected and handle date ranges
+    const attendanceType = document.getElementById('attendance-type');
+    const arrivalInput = document.getElementById('attendance-arrival');
+    const departureInput = document.getElementById('attendance-departure');
+    const dateToGroup = document.getElementById('attendance-date-to-group');
+    const dateToInput = document.getElementById('attendance-date-to');
+    const dateInput = document.getElementById('attendance-date');
+    const summaryDaysGroup = document.getElementById('attendance-summary-days');
+
+    function calculateAttendanceDays() {
+        const type = attendanceType.value;
+        const dateFromVal = dateInput.value;
+        const dateToVal = dateToInput.value;
+
+        if ((type === 'dovolená' || type === 'nemoc') && dateFromVal) {
+            const start = new Date(dateFromVal);
+            const end = dateToVal ? new Date(dateToVal) : start;
+
+            if (end < start) {
+                summaryDaysGroup.style.display = 'block';
+                document.getElementById('attendance-days-text').textContent = '⚠️ Datum do nesmí předcházet datumu od!';
+                document.getElementById('attendance-days-text').style.color = 'var(--danger)';
+                return;
+            }
+
+            let daysCount = 0;
+            let current = new Date(start);
+            while (current <= end) {
+                if (type === 'dovolená') {
+                    // Only count business days (Monday-Friday) for vacation
+                    const day = current.getDay();
+                    if (day !== 0 && day !== 6) {
+                        daysCount++;
+                    }
+                } else {
+                    // Count all days for sick leave (nemocenská)
+                    daysCount++;
+                }
+                current.setDate(current.getDate() + 1);
+            }
+
+            summaryDaysGroup.style.display = 'block';
+            document.getElementById('attendance-days-text').textContent = `Celkový počet dnů k zaúčtování: ${daysCount}`;
+            document.getElementById('attendance-days-text').style.color = 'var(--primary)';
+        } else {
+            summaryDaysGroup.style.display = 'none';
+        }
+    }
+
+    attendanceType.addEventListener('change', (e) => {
         const type = e.target.value;
-        const arrivalInput = document.getElementById('attendance-arrival');
-        const departureInput = document.getElementById('attendance-departure');
         if (type === 'dovolená' || type === 'nemoc') {
             arrivalInput.value = '';
             departureInput.value = '';
             arrivalInput.disabled = true;
             departureInput.disabled = true;
+            dateToGroup.style.display = 'block';
+            if (!dateToInput.value) dateToInput.value = dateInput.value;
         } else {
             arrivalInput.disabled = false;
             departureInput.disabled = false;
+            dateToGroup.style.display = 'none';
+            dateToInput.value = '';
         }
+        calculateAttendanceDays();
     });
+
+    dateInput.addEventListener('change', calculateAttendanceDays);
+    dateToInput.addEventListener('change', calculateAttendanceDays);
 }
 
 function showModal(modalEl) {
@@ -2529,15 +2583,20 @@ function openAttendanceModal(attId = null) {
         if (att) {
             document.getElementById('attendance-id').value = att.id;
             document.getElementById('attendance-date').value = att.datum;
+            document.getElementById('attendance-date-to').value = att.datum_do || att.datum;
             typeSelect.value = att.typ;
             arrivalInput.value = att.prichod || '';
             departureInput.value = att.odchod || '';
             document.getElementById('attendance-note').value = att.poznamka || '';
 
-            // Handle disability on type load
+            // Handle range controls visibility
+            const dateToGroup = document.getElementById('attendance-date-to-group');
             if (att.typ === 'dovolená' || att.typ === 'nemoc') {
                 arrivalInput.disabled = true;
                 departureInput.disabled = true;
+                dateToGroup.style.display = 'block';
+            } else {
+                dateToGroup.style.display = 'none';
             }
 
             // Only Admin can delete attendance records
@@ -2548,8 +2607,14 @@ function openAttendanceModal(attId = null) {
     } else {
         title.textContent = 'Nový záznam docházky / absence';
         document.getElementById('attendance-id').value = '';
+        document.getElementById('attendance-date-to').value = '';
+        document.getElementById('attendance-date-to-group').style.display = 'none';
         renderAuditTrail('attendance-audit-info', null);
     }
+
+    // Trigger calculation updates
+    const event = new Event('change');
+    typeSelect.dispatchEvent(event);
 
     showModal(modal);
 }
@@ -2558,6 +2623,7 @@ function saveAttendance(e) {
     e.preventDefault();
     const id = document.getElementById('attendance-id').value;
     const datum = document.getElementById('attendance-date').value;
+    const datum_do = document.getElementById('attendance-date-to').value;
     const typ = document.getElementById('attendance-type').value;
     const prichod = document.getElementById('attendance-arrival').value;
     const odchod = document.getElementById('attendance-departure').value;
@@ -2569,8 +2635,6 @@ function saveAttendance(e) {
     const activeUserRole = state.currentUser ? state.currentUser.kod_pristup : 'HOST';
     const isAdmin = (activeUserRole === 'ADMIN');
 
-    // Attendance belongs to the user selected in the filter view currently, 
-    // or current logged-in user if creating/updating own logs.
     let userId = state.currentUser.id;
     if (isAdmin) {
         userId = document.getElementById('filter-attendance-user').value;
@@ -2587,13 +2651,35 @@ function saveAttendance(e) {
         }
     }
 
+    // Helper to calculate total count of charged days
+    function countChargedDays(type, startStr, endStr) {
+        if (!startStr) return 0;
+        const start = new Date(startStr);
+        const end = endStr ? new Date(endStr) : start;
+        if (end < start) return 0;
+
+        let daysCount = 0;
+        let current = new Date(start);
+        while (current <= end) {
+            if (type === 'dovolená') {
+                const day = current.getDay();
+                if (day !== 0 && day !== 6) daysCount++;
+            } else {
+                daysCount++;
+            }
+            current.setDate(current.getDate() + 1);
+        }
+        return daysCount;
+    }
+
     if (id) {
         // Edit mode
         const index = state.attendance.findIndex(a => a.id === id);
         if (index !== -1) {
             const old = state.attendance[index];
             const changes = [];
-            if (old.datum !== datum) changes.push(`Datum (${old.datum} -> ${datum})`);
+            if (old.datum !== datum) changes.push(`Datum od (${old.datum} -> ${datum})`);
+            if (old.datum_do !== datum_do) changes.push(`Datum do (${old.datum_do || old.datum} -> ${datum_do || datum})`);
             if (old.typ !== typ) changes.push(`Typ (${old.typ} -> ${typ})`);
             if (old.prichod !== prichod) changes.push(`Příchod (${old.prichod || 'neuveden'} -> ${prichod || 'neuveden'})`);
             if (old.odchod !== odchod) changes.push(`Odchod (${old.odchod || 'neuveden'} -> ${odchod || 'neuveden'})`);
@@ -2602,26 +2688,25 @@ function saveAttendance(e) {
             const changeText = changes.length > 0 ? `Změna: ${changes.join(', ')}` : 'Beze změny hodnot';
 
             // Check if changing type away from or to vacation/NV credits
-            handleAttendanceCreditsDiff(old.user_id, old, { typ, prichod, odchod });
+            handleAttendanceCreditsDiff(old.user_id, old, { typ, datum, datum_do, prichod, odchod });
 
             state.attendance[index] = {
                 ...state.attendance[index],
-                datum, typ, prichod, odchod, poznamka,
+                datum, datum_do, typ, prichod, odchod, poznamka,
                 updated_by: initials,
                 updated_at: nowStr,
                 last_change_details: changeText
             };
 
-            // Log to global audit logs if admin edited someone else's log
             if (old.user_id !== state.currentUser.id) {
-                logAuditEvent('ÚPRAVA', 'Docházka', targetName, `Admin ${initials} upravil docházku za den ${datum}: ${changeText}`);
+                logAuditEvent('ÚPRAVA', 'Docházka', targetName, `Admin ${initials} upravil docházku za období ${datum} - ${datum_do || datum}: ${changeText}`);
             } else {
-                logAuditEvent('ÚPRAVA', 'Docházka', targetName, `Změna docházky za den ${datum}: ${changeText}`);
+                logAuditEvent('ÚPRAVA', 'Docházka', targetName, `Změna docházky za období ${datum} - ${datum_do || datum}: ${changeText}`);
             }
         }
     } else {
         // Create mode
-        // Prevent duplicate entries for same user & date
+        // Prevent duplicate entries for same user & start date
         const duplicate = state.attendance.find(a => a.user_id === userId && a.datum === datum);
         if (duplicate) {
             alert(`Záznam docházky pro ${targetName} na den ${datum} již existuje!`);
@@ -2632,7 +2717,7 @@ function saveAttendance(e) {
             id: 'att_' + Date.now(),
             user_id: userId,
             user_name: targetName,
-            datum, typ, prichod, odchod, poznamka,
+            datum, datum_do, typ, prichod, odchod, poznamka,
             created_by: initials,
             created_at: nowStr,
             updated_by: initials,
@@ -2646,9 +2731,9 @@ function saveAttendance(e) {
         state.attendance.push(newEntry);
         
         if (userId !== state.currentUser.id) {
-            logAuditEvent('VYTVOŘENÍ', 'Docházka', targetName, `Admin ${initials} vytvořil docházku za den ${datum} (Typ: ${typ})`);
+            logAuditEvent('VYTVOŘENÍ', 'Docházka', targetName, `Admin ${initials} vytvořil docházku za období ${datum} - ${datum_do || datum} (Typ: ${typ})`);
         } else {
-            logAuditEvent('VYTVOŘENÍ', 'Docházka', targetName, `Vytvoření docházky za den ${datum} (Typ: ${typ})`);
+            logAuditEvent('VYTVOŘENÍ', 'Docházka', targetName, `Vytvoření docházky za období ${datum} - ${datum_do || datum} (Typ: ${typ})`);
         }
     }
 
@@ -2667,14 +2752,14 @@ function deleteAttendance() {
     const targetUserObj = state.users.find(u => u.id === att.user_id);
     const targetName = targetUserObj ? targetUserObj.jmeno : 'Neznámý';
 
-    if (confirm(`Opravdu chcete smazat tento docházkový záznam na den ${att.datum}?`)) {
+    if (confirm(`Opravdu chcete smazat tento docházkový záznam na období ${att.datum} - ${att.datum_do || att.datum}?`)) {
         // Refund vacation/NV credits on delete
         handleAttendanceCreditsDiff(att.user_id, att, null);
 
         state.attendance = state.attendance.filter(a => a.id !== id);
         saveData('crm_attendance', state.attendance);
 
-        logAuditEvent('SMAZÁNÍ', 'Docházka', targetName, `Smazání docházky za den ${att.datum} (Původní typ: ${att.typ})`);
+        logAuditEvent('SMAZÁNÍ', 'Docházka', targetName, `Smazání docházky za období ${att.datum} - ${att.datum_do || att.datum} (Původní typ: ${att.typ})`);
 
         closeAllModals();
         renderAttendance();
@@ -2688,10 +2773,32 @@ function handleAttendanceCreditsDiff(userId, oldVal, newVal) {
 
     const user = state.users[userIndex];
 
+    // Helper to calculate total count of charged days
+    function countDays(type, startStr, endStr) {
+        if (!startStr) return 0;
+        const start = new Date(startStr);
+        const end = endStr ? new Date(endStr) : start;
+        if (end < start) return 0;
+
+        let daysCount = 0;
+        let current = new Date(start);
+        while (current <= end) {
+            if (type === 'dovolená') {
+                const day = current.getDay();
+                if (day !== 0 && day !== 6) daysCount++;
+            } else {
+                daysCount++;
+            }
+            current.setDate(current.getDate() + 1);
+        }
+        return daysCount;
+    }
+
     // 1. REFUND OLD VALUES
     if (oldVal) {
         if (oldVal.typ === 'dovolená') {
-            user.dny_dovolena = (user.dny_dovolena || 0) + 1; // Return 1 vacation day
+            const oldDays = countDays('dovolená', oldVal.datum, oldVal.datum_do || oldVal.datum);
+            user.dny_dovolena = (user.dny_dovolena || 0) + oldDays; // Return vacation days
         } else if (oldVal.typ === 'náhradní volno' && oldVal.prichod && oldVal.odchod) {
             const arr = oldVal.prichod.split(':');
             const dep = oldVal.odchod.split(':');
@@ -2703,7 +2810,8 @@ function handleAttendanceCreditsDiff(userId, oldVal, newVal) {
     // 2. APPLY NEW VALUES
     if (newVal) {
         if (newVal.typ === 'dovolená') {
-            user.dny_dovolena = Math.max(0, (user.dny_dovolena || 0) - 1); // Deduct 1 vacation day
+            const newDays = countDays('dovolená', newVal.datum, newVal.datum_do || newVal.datum);
+            user.dny_dovolena = Math.max(0, (user.dny_dovolena || 0) - newDays); // Deduct vacation days
         } else if (newVal.typ === 'náhradní volno' && newVal.prichod && newVal.odchod) {
             const arr = newVal.prichod.split(':');
             const dep = newVal.odchod.split(':');

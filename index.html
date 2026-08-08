@@ -888,9 +888,16 @@
             <input type="hidden" id="attendance-id">
             <div class="modal-body">
                 <div class="form-grid">
-                    <div class="form-group col-full">
-                        <label for="attendance-date" class="required">Datum</label>
+                    <div class="form-group" style="width: 50%; float: left;">
+                        <label for="attendance-date" class="required">Datum od</label>
                         <input type="date" id="attendance-date" class="form-control" required>
+                    </div>
+                    <div class="form-group" id="attendance-date-to-group" style="width: 50%; float: left; display: none;">
+                        <label for="attendance-date-to">Datum do</label>
+                        <input type="date" id="attendance-date-to" class="form-control">
+                    </div>
+                    <div class="form-group col-full" id="attendance-summary-days" style="display: none; background: rgba(0,0,0,0.02); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); margin-bottom: 10px;">
+                        <span id="attendance-days-text" style="font-weight: 600; font-size: 0.88rem; color: var(--primary);">Celkový počet dnů k zaúčtování: 1</span>
                     </div>
                     <div class="form-group col-full">
                         <label for="attendance-type" class="required">Typ docházky</label>
